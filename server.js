@@ -9,9 +9,15 @@ var https = require('https');
 var request = require('request');
 var app = express();
 var Destiny = require('./destiny-client');
+var EventEmitter = require("events").EventEmitter;
+var util = require('util');
 
-module.exports = {
-	Start: function(){
+function Server(){
+	
+}
+
+util.inherits(Server, EventEmitter);
+Server.prototype.Start = function() {
 		app.use(bodyParser.json());
 		app.use(bodyParser.urlencoded({extended: true}));
 		app.use('/home', express.static('/home'));
@@ -26,8 +32,20 @@ module.exports = {
 		var server = app.listen(8080, function() {
 			console.log("Listening on port: %s", server.address().port);
 		});
-	}
 }
+
+Server.prototype.UpdateTokens = function(){
+	self.emit("tokensupdate");
+}
+module.exports = Server;
+
+/*module.exports = {
+	
+	}
+	ee: new EventEmitter();
+	
+}
+*/
 app.get('/image/:filename', function(req, res){
 	return res.sendFile(__dirname + "/home/"+req.params['filename']);
 });
@@ -52,7 +70,7 @@ app.get('/authenticate', function(req, res){
 		
 		var json = JSON.parse(httpBody);
 		var accessToken = String(json.Response.accessToken.value);
-		
+		console.log(accessToken);
 		//now we need to grab the membershipId associated with the accessToken so we can update the links.json file:
 		request({
 			headers: {

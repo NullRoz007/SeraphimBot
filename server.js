@@ -71,6 +71,8 @@ app.get('/authenticate', function(req, res){
 		var json = JSON.parse(httpBody);
 		var accessToken = String(json.Response.accessToken.value);
 		console.log(accessToken);
+		var refreshToken = String(json.Response.refreshToken.value);
+		
 		//now we need to grab the membershipId associated with the accessToken so we can update the links.json file:
 		request({
 			headers: {
@@ -109,6 +111,7 @@ app.get('/authenticate', function(req, res){
 									if(linker.destinyId == membershipId){
 										console.log("AYY?");
 										linker.token = accessToken;
+										linker.refreshToken = refreshToken;
 										linked_users[i] = linker;
 									}
 								}

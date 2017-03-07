@@ -19,6 +19,7 @@ var messages = [];
 var events = [];
 var event_offset = 0;
 var linked_users = [];
+var user_modes = [];
 var loadouts = [];
 var APIKEY = 'af70e027a7694afc8ed613589bf04a60';
 var destiny = Destiny(APIKEY);
@@ -60,10 +61,9 @@ var months = {
 	"11": "Nov",
 	"12": "Dec"
 }
-var VERSION = "1.3.1";
+var VERSION = "1.3.3";
 var changelog = VERSION+": \n" +
-				"	 1) Most commands now restricted to _ channel\n"+
-				"	 2) Added Archer memes as per request of Darkwing Duck."
+				"	 1) Added the legacy option to !group <id> <option>.";
 				
 client.on('ready', () => {
 	console.log('Client Connected!');	
@@ -92,7 +92,7 @@ client.on('message', message => {
 		else if(message.content ==="!changelog"){
 			message.channel.sendMessage("Current Version: "+VERSION+"\n"+"Change Log: \n"+changelog);
 		}
-	
+		
 		//clear messages from channel
 		else if(message.content === "!clear"){	
 			if (hasModPerms(message)){
@@ -200,6 +200,7 @@ client.on('message', message => {
 		}
 		else if(message.content.split(' ').length >= 1){
 			var splitMessage = message.content.split(' ');	
+			
 			if(splitMessage[0] === "!post")
 			{	
 				console.log("Creating new event...");	
@@ -287,8 +288,8 @@ client.on('message', message => {
 				
 			}
 			else if(splitMessage[0] == "!group"){
-				if(splitMessage.length == 2){
-					if(splitMessage.length == 2){
+				if(splitMessage.length == 2 || splitMessage.length == 3){
+					if(splitMessage.length == 2 || splitMessage.length == 3){
 					var id = splitMessage[1];
 					if(id - 1 < events.length && id > 0){
 						var event = events[parseInt(id) - 1];
@@ -300,18 +301,20 @@ client.on('message', message => {
 							
 						
 							
-						//output = "```\n================================\n"+event.name+"\n================================\nStart Time: "+event.startTime + "-"+event.timeZone+"\n================================\nGroup ID: "+event.id+"\n================================"+"\nRoster:\n";
+						output = "```\n================================\n"+event.name+"\n================================\nStart Time: "+event.startTime + "-"+event.timeZone+"\n================================\nGroup ID: "+event.id+"\n================================"+"\nRoster:\n";
 						var playerIndex = 1;
 						var players = "";
 						for(i = 0; i < event.players.length; i++){
 							if(playerIndex==7)
 							{
 								players+= "Substitutes:\n";
+								output += "Substitutes:\n";
 							}
 							players += playerIndex+". "+event.players[i]+"\n";
+							output += playerIndex+". "+event.players[i]+"\n";
 							++playerIndex;
 						}
-						console.log(players);
+						
 						if(players == ""){
 							console.log("players is empty!")
 							embed.addField("This group is empty.", "use !joingroup "+id+" to join it, or if you are the groups creator you can use !removegroup "+id+" to delete it.");
@@ -319,7 +322,13 @@ client.on('message', message => {
 						else{
 							embed.addField("Players", players);
 						}
-						message.channel.sendEmbed(embed);
+						console.log(splitMessage[2]);
+						if(splitMessage[2] === "legacy"){
+							message.channel.sendMessage(output+"```");
+						}
+						else{
+							message.channel.sendEmbed(embed);
+						}
 					}
 				}
 			}
@@ -548,7 +557,7 @@ client.on('message', message => {
 						"!post <activity> <time> <timezone>  :  Creates a new group. <activity> can be an abbreviation like wotm or vog. If you do not enter a recognized abbreviation, it will take whatever you entered. You can also add -n or -h to the activity to show normal or hard mode. To use a name with spaces in it put \" around it. \n" +
 						"!groups  :  Displays all active groups\n" +
 						"!mygroups : Display all active groups that you are a member of\n"+
-						"!group <ID>  :  Displays a specific group with the given ID\n" +
+						"!group <ID> <option> :  Displays a specific group with the given ID\n" +
 						"!joingroup <ID>  :  Join the group with the given ID\n" +
 						"!leavegroup <ID>  :  Leave the group with the given ID\n" +
 						"!removegroup <ID>  :  Removes the group with the given ID. Removed groups erased and can no longer be joined. Only the creator can use this\n" +
@@ -658,6 +667,10 @@ client.on('message', message => {
 				}
 				
 				else if(splitMessage[0] === "!loadout"){
+					if(!isBotCommander(message)){
+						message.channel.sendMessage("This command is currently restricted to Bot Commanders only!");
+						return;
+					}
 					if(splitMessage[1] === "list"){
 						for(x = 0; x < linked_users.length; x++){
 							var check = linked_users[x].discordName;
@@ -678,10 +691,169 @@ client.on('message', message => {
 							}
 						}
 					}
+					else if(splitMessage[1] === "detail"){
+						for(x = 0; x < linked_users.length; x++){
+							var check = linked_users[x].discordName;
+							
+							if(message.member.user.username == check){
+								var index = Number(splitMessage[2]);
+								var loadout = loadouts[index];
+								
+								console.log("ID: "+linked_users[x].destinyId+"\nCHAR_ID: "+loadout.characterId+"\nITEM: "+loadout.items[0].prim_insId);
+								var options = {
+									headers: {
+										"X-API-Key": APIKEY
+									},
+									url: "http://www.bungie.net/Platform/Destiny/2/Account/"+linked_users[x].destinyId+"/Character/"+loadout.characterId+"/Inventory/"+loadout.items[0].sub_insId+"/"
+								};
+								var options_prim = {
+									headers: {
+										"X-API-Key": APIKEY
+									},
+									url: "http://www.bungie.net/Platform/Destiny/2/Account/"+linked_users[x].destinyId+"/Character/"+loadout.characterId+"/Inventory/"+loadout.items[0].prim_insId+"/"
+								};
+								var options_sec = {
+									headers: {
+										"X-API-Key": APIKEY
+									},
+									url: "http://www.bungie.net/Platform/Destiny/2/Account/"+linked_users[x].destinyId+"/Character/"+loadout.characterId+"/Inventory/"+loadout.items[0].sec_insId+"/"
+								}	
+								var options_heavy = {
+									headers: {
+										"X-API-Key": APIKEY
+									},
+									url: "http://www.bungie.net/Platform/Destiny/2/Account/"+linked_users[x].destinyId+"/Character/"+loadout.characterId+"/Inventory/"+loadout.items[0].heavy_insId+"/"
+								}
+								var items_string = "";
+								var icons = [];
+								var embed = new Discord.RichEmbed();
+								
+								request(options, function(error, response, body){
+									var response = JSON.parse(body);
+									var item_hash = response.Response.data.item.itemHash;
+									console.log(item_hash);
+									
+									request(options_prim, function(error, response, body){
+										var prim_hash = JSON.parse(body).Response.data.item.itemHash;
+										var manifest_options = {
+											headers: {
+												"X-API-Key": APIKEY
+											},
+											url: "http://www.bungie.net/Platform/Destiny/Manifest/InventoryItem/"+prim_hash+"/"
+										};
+										message.channel.sendMessage("Working...");
+										request(manifest_options, function(error, response, body){
+											var prim = JSON.parse(body);
+											
+											var name = prim.Response.data.inventoryItem.itemName;
+											embed.addField(name, prim.Response.data.inventoryItem.itemDescription);
+											var icon = prim.Response.data.inventoryItem.icon;
+											icons.push(icon);
+											
+											request(options_sec, function(error, response, body){
+												var sec_hash = JSON.parse(body).Response.data.item.itemHash;
+												manifest_options.url = "http://www.bungie.net/Platform/Destiny/Manifest/InventoryItem/"+sec_hash+"/";
+												
+												request(manifest_options, function(error, response, body){
+													var sec = JSON.parse(body);
+													var name = sec.Response.data.inventoryItem.itemName;
+													var icon = sec.Response.data.inventoryItem.icon;
+													embed.addField(name, sec.Response.data.inventoryItem.itemDescription);
+													icons.push(icon);
+													
+													request(options_heavy, function(error, response, body){
+														var heavy_hash = JSON.parse(body).Response.data.item.itemHash;
+														manifest_options.url = "http://www.bungie.net/Platform/Destiny/Manifest/InventoryItem/"+heavy_hash+"/";
+														
+														request(manifest_options, function(error, response, body){
+															var heavy = JSON.parse(body);
+															var name = heavy.Response.data.inventoryItem.itemName;
+															var icon = heavy.Response.data.inventoryItem.icon;
+															embed.addField(name, heavy.Response.data.inventoryItem.itemDescription);
+															icons.push(icon);
+															
+															request(options, function(error, response, body){
+																var sub_hash = JSON.parse(body).Response.data.item.itemHash;
+																manifest_options.url = "http://www.bungie.net/Platform/Destiny/Manifest/InventoryItem/"+sub_hash+"/";
+																
+																request(manifest_options, function(error, response, body){
+																	var sub = JSON.parse(body);
+																	var name = sub.Response.data.inventoryItem.itemName;
+																	var icon = sub.Response.data.inventoryItem.icon;
+																	console.log(icons);
+																	
+																	Jimp.read("res/loadoutBackground.png", function (err, image) {
+																		Jimp.read("http://www.bungie.net"+icons[0], function (err, iconOne) {
+																			image.blit(iconOne, 0, 0);
+																			
+																			Jimp.read("http://www.bungie.net"+icons[2], function (err, iconTwo) {
+																				image.blit(iconTwo, 96, 0);
+																				
+																				Jimp.read("http://www.bungie.net"+icons[3], function (err, iconThree) {
+																					if(err){
+																						message.channel.sendMessage("Error: "+err);
+																					}
+																					image.blit(iconThree, 192, 0);
+																					image.write("home/tmp.png", function(err){
+																						if(err){
+																							console.log(err);
+																						}
+																						embed.setTitle(loadout.name + " - "+name)
+																						embed.setDescription(items_string)
+																						embed.setThumbnail("http://www.bungie.net/"+icon);
+																						embed.setImage("http://seraphimbot.mod.bz/image/tmp.png");
+																						message.channel.sendEmbed(embed);
+																					
+																						setTimeout(function() {
+																							fs.unlink("home/tmp.png");
+																						}, 1000);
+																					});
+																				});
+																				
+																			});
+																		});
+																	});
+																});
+															});
+														});
+													});
+													
+													console.log(items_string);
+													console.log(icons);
+												});
+											});
+											
+										});
+									});
+									
+									/*destiny.Manifest({
+										type: 'InventoryItem',
+										hash: item_hash
+									}).then(res => {
+										var embed = new Discord.RichEmbed();
+										var itemName = res.inventoryItem.itemName;
+										var itemIcon = res.inventoryItem.icon;
+										console.log(itemName);
+										console.log(itemIcon);
+										embed.setTitle(loadout.name+" - "+itemName);
+										console.log("1");
+										embed.setDescription("Items:");
+										console.log("2");
+										embed.setThumbnail("http://www.bungie.net/"+itemIcon);
+										console.log("3");
+										
+										message.channel.sendEmbed(embed);
+									});
+									*/
+								});
+							}
+						}
+					}
 					else if(splitMessage[1] === "equip"){
 						for(x = 0; x < linked_users.length; x++){
 							if(linked_users[x].discordName == message.member.user.username){
 								var token = linked_users[x].token;
+								var refreshToken = linked_users[x].refreshToken;
 								var membershipId = linked_users[x].destinyId;
 								var index = Number(splitMessage[2]);
 								var loadout = loadouts[index];
@@ -690,6 +862,9 @@ client.on('message', message => {
 									console.log("user does not own loadout: "+loadout);
 									return;
 								}
+								
+								refreshAccessToken(membershipId, refreshToken);
+								
 								console.log(loadout);
 								destiny.Account({
 									membershipType: 2,
@@ -708,6 +883,16 @@ client.on('message', message => {
 									request.post(sub_options, function(error, response, body){
 										var response = JSON.parse(body);
 										console.log(response);
+										
+										
+										if(response.ErrorStatus == "AccessTokenHasExpired"){
+											//user needs to reauthenticate their access token, this will be done automaticly in the future:
+											message.channel.sendMessage("Your access token has expired, to continue using loadouts you need to re-authenticate at: https://www.bungie.net/en/Application/Authorize/10919");
+											
+											
+											return;
+										}
+												
 										statuses.push(response.ErrorStatus);
 										if(response.Message != 'Ok'){
 													message.channel.sendMessage("Unable to equip item because: "+response.Message);
@@ -725,12 +910,6 @@ client.on('message', message => {
 												var response = JSON.parse(body);
 												console.log(response);
 												statuses.push(response.ErrorStatus);
-												
-												if(response.ErrorStatus == "AccessTokenHasExpired"){
-													//user needs to reauthenticate their access token, this will be done automaticly in the future:
-													message.channel.sendMessage("Your access token has expired, to continue using loadouts you need to re-authenticate at: https://www.bungie.net/en/Application/Authorize/10919");
-													return;
-												}
 												
 												if(response.Message != 'Ok'){
 													message.channel.sendMessage("Unable to equip item because: "+response.Message);
@@ -800,6 +979,7 @@ client.on('message', message => {
 								
 								var loadout = {
 									owner: membershipId,
+									characterId: "",
 									name: name, 
 									items: []
 								}
@@ -809,7 +989,7 @@ client.on('message', message => {
 									membershipId: membershipId
 								}).then(res => {
 									var id = res.characters[0].characterBase.characterId;
-
+									loadout.characterId = id;
 									destiny.Inventory({
 										membershipType: 2,
 										membershipId: membershipId,
@@ -893,7 +1073,7 @@ client.on('message', message => {
 										return;
 									}
 								}
-								var linker = {discordName: message.member.user.username, destinyId: user.membershipId, token: 'NONE'};
+								var linker = {discordName: message.member.user.username, destinyId: user.membershipId, token: 'NONE', refreshToken: 'NONE'};
 								console.log(linker);
 								linked_users.push(linker);
 								
@@ -2018,8 +2198,8 @@ client.on("guildMemberAdd", (member) => {
 
 module.exports = {
 	Start: function(){
-			//client.login('MjQ0NjEzOTYyOTE2NjkxOTY4.CwFLlA.-JAnNUCZg1DdQwbtlIrW1r51xg4'); //BenBot
-			client.login('MjQxODI2MjM3OTk0MTA2ODgw.Cv2KwA.LSE2UW3q0TY_xlpifGhSr3EijSY'); //DuckBot
+			client.login('MjQ0NjEzOTYyOTE2NjkxOTY4.CwFLlA.-JAnNUCZg1DdQwbtlIrW1r51xg4'); //BenBot
+			//client.login('MjQxODI2MjM3OTk0MTA2ODgw.Cv2KwA.LSE2UW3q0TY_xlpifGhSr3EijSY'); //DuckBot
 	}
 }
 process.on('uncaughtException', function(err) {
@@ -2327,9 +2507,7 @@ function getSeraTwitch(message) {
             var stream = channel.stream;
             var embed = new Discord.RichEmbed()
                 .setTitle("Seraphim Elite Twitch Channel")
-            if (!stream) {
-                
-				
+            if (stream == null) {
 				var channeloptions = {
 					url: 'https://api.twitch.tv/kraken/channels/seraphimelite1',
 						headers: {
@@ -2368,6 +2546,15 @@ function getSeraTwitch(message) {
 							request(hostedoptions, function(error, response, body){
 								var channel = JSON.parse(body);
 								var image_link = channel.profile_banner;
+								console.log(">"+channel.stream);
+								if(channel.stream == null){
+									embed.setDescription("No one is streaming currently... \nhttps://www.twitch.tv/seraphimelite1")
+									embed.setThumbnail("https://static-cdn.jtvnw.net/jtv_user_pictures/seraphimelite1-profile_image-4830ebfdb113f773-300x300.png");
+									embed.setURL("https://www.twitch.tv/seraphimelite1");
+									message.channel.sendEmbed(embed);
+									return;
+								}
+								//console.log("OH OH");
 								console.log(channel.stream.preview.large);
 								embed.setImage(channel.stream.preview.large);
 								message.channel.sendEmbed(embed);
@@ -2379,6 +2566,7 @@ function getSeraTwitch(message) {
                 
             }
             else {
+				console.log(stream);
                 var title = stream.channel.status;
 				embed.setTitle(title);
 				embed.setDescription("Game: "+stream.game+"\nhttps://www.twitch.tv/seraphimelite1");
@@ -2404,6 +2592,43 @@ function getGroups(username){
 		
 	}
 	return return_events;
+}
+function refreshAccessToken(membershipId, refreshT){
+	console.log("Refreshing with: "+refreshT);
+	var options = {
+		headers: {
+			'X-API-Key': APIKEY
+		},
+		url: 'https://www.bungie.net/Platform/App/GetAccessTokensFromRefreshToken/',
+		body: JSON.stringify({refreshToken: refreshT})
+	};
+	request.post(options, function(error, response, body){
+		var response = JSON.parse(body);
+		var errorCode = response.ErrorCode;
+		console.log(errorCode);
+		if(errorCode == '2110'){
+			//refresh token is not valid yet:
+			console.log("Access code does not need to be updated yet.")
+			return;
+		}
+		else if(errorCode == '1'){
+			//success:
+			console.log(body);
+			var newAccessToken = response.Response.accessToken.value;
+			var newRefreshToken = response.Response.refreshToken.value;
+			
+			for(i = 0; i < linked_users.length; i++){
+				var linker = linked_users[i];
+				if(linker.destinyId == membershipId){
+					linked_users[i].token = newAccessToken;
+					linked_users[i].refreshToken = newRefreshToken;
+					
+					updateLinksJSON();
+				}
+			}
+		}
+		
+	});
 }
 function isBotCommander(input){
 	console.log(input.member.roles);
@@ -2431,6 +2656,7 @@ function fileExists(file){
 function random (low, high) {
     return Math.random() * (high - low) + low;
 }
+
 function hasModPerms(input) {
 	try{
  

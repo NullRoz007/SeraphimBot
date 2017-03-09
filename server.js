@@ -11,13 +11,19 @@ var app = express();
 var Destiny = require('./destiny-client');
 var EventEmitter = require("events").EventEmitter;
 var util = require('util');
-
-function Server(){
-	
+var encryptor = require('file-encryptor');
+var Server = function(){
+	var self = this;	
+	EventEmitter.call(this);
 }
 
-util.inherits(Server, EventEmitter);
+
+//util.inherits(Server, EventEmitter);
+
+Server.prototype.__proto__ = EventEmitter.prototype;
+
 Server.prototype.Start = function() {
+		var self = this;
 		app.use(bodyParser.json());
 		app.use(bodyParser.urlencoded({extended: true}));
 		app.use('/home', express.static('/home'));
@@ -32,20 +38,24 @@ Server.prototype.Start = function() {
 		var server = app.listen(8080, function() {
 			console.log("Listening on port: %s", server.address().port);
 		});
+		app.get('/authbot', function(req, res){
+			console.log("GOT AUTH REQUEST");
+			var password = req.query['p'];
+			console.log(password);
+			var file = fs.readFile('config', function(error, data){
+				if(error) throw error;
+				encryptor.decryptFile('config', 'config.json', password, function(err){
+					if(err) throw error;
+					self.emit('auth');
+				});
+				
+			});
+			
+			res.end("SUCC");
+		});
 }
 
-Server.prototype.UpdateTokens = function(){
-	self.emit("tokensupdate");
-}
-module.exports = Server;
 
-/*module.exports = {
-	
-	}
-	ee: new EventEmitter();
-	
-}
-*/
 app.get('/image/:filename', function(req, res){
 	return res.sendFile(__dirname + "/home/"+req.params['filename']);
 });
@@ -62,7 +72,7 @@ app.get('/authenticate', function(req, res){
 	//request an AccessToken:
 	request.post({
 		headers: {
-			'X-API-KEY': 'af70e027a7694afc8ed613589bf04a60',
+			'X-API-KEY': '35f5c306f9954850a9cc2435c85a8d09',
 		},
 		url: 'https://www.bungie.net/Platform/App/GetAccessTokensFromCode/',
 		body: JSON.stringify(codeObject)
@@ -76,7 +86,7 @@ app.get('/authenticate', function(req, res){
 		//now we need to grab the membershipId associated with the accessToken so we can update the links.json file:
 		request({
 			headers: {
-				'X-API-KEY': 'af70e027a7694afc8ed613589bf04a60',
+				'X-API-KEY': '35f5c306f9954850a9cc2435c85a8d09',
 				'Authorization': 'Bearer '+accessToken
 			},
 			url: 'https://www.bungie.net/Platform/User/GetCurrentBungieNetUser/'
@@ -90,7 +100,7 @@ app.get('/authenticate', function(req, res){
 				//so userJson.membershipId is not the same as membershipId in GetAccount, and other endpoints so 
 				//I'll revert back to destiny-client and do a search to return the real one:
 				
-				var destiny = Destiny("af70e027a7694afc8ed613589bf04a60");
+				var destiny = Destiny("35f5c306f9954850a9cc2435c85a8d09");
 				destiny.Search({
 					membershipType: 2,
 					name: displayName
@@ -185,3 +195,5 @@ app.get('/destiny/link/:DiscordName/:DestinyID', function(req, res){
 	}
 	updateLinksJSON();	
 });*/
+
+module.exports.Server = Server;

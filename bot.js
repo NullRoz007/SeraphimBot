@@ -1,15 +1,15 @@
-var SeraBot = require('./dis');
-var servermodule = require('./server');
-
-console.log(servermodule);
+var Sera = require('./server');
 //Start the server
 console.log("Starting the server...")
-var Server = new servermodule();
+var Server = new Sera.Server();
 Server.Start();
-Server.on('tokensupdate', function() {
-	console.log("Update event triggered!");
+
+console.log("Starting the Discord client...")
+//wait for the config file to be decrypted:
+Server.on('auth', function() {
+	var SeraBot = require('./dis');
+	//Bot names are main/secondary:
+	SeraBot.Start("main");
+	SeraBot.Start("secondary");
 });
 
-//Start the Discord Bot.
-console.log("Starting the Discord client...")
-SeraBot.Start();

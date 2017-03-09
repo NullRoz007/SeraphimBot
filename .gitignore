@@ -6,3 +6,5 @@ key.pem
 home/events.json
 home/links.json
 home/loadouts.json
+config.json
+config

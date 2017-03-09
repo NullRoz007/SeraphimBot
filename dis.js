@@ -21,9 +21,11 @@ var event_offset = 0;
 var linked_users = [];
 var user_modes = [];
 var loadouts = [];
-var APIKEY = 'af70e027a7694afc8ed613589bf04a60';
-var destiny = Destiny(APIKEY);
+var APIKEY = null;
+var destiny = null;
 var request = require('request');
+var config = null;
+
 var stat_hashes = {
 	"Light": "3897883278",
 
@@ -61,9 +63,9 @@ var months = {
 	"11": "Nov",
 	"12": "Dec"
 }
-var VERSION = "1.3.3";
+var VERSION = "1.3.4";
 var changelog = VERSION+": \n" +
-				"	 1) Added the legacy option to !group <id> <option>.";
+				"	 1) Deplpoyed anti-russian hacker defenses.";
 				
 client.on('ready', () => {
 	console.log('Client Connected!');	
@@ -87,7 +89,7 @@ client.on('message', message => {
 	if(message.channel.name != "announcements"){
 		
 		if(message.content === "!ping"){
-			message.reply('You called? (This bot was made by Ben (NullRoz007) and Reusableduckk, @ one of them if there are any problems. Check out the source at: https://github.com/NullRoz007/SeraphimBot/ \nCurrent Version: '+VERSION);
+			message.reply('You called? (This bot was made by Ben (NullRoz007) and Reusableduckk, @ one of them if there are any problems.\nCurrent Version: '+VERSION);
 		}
 		else if(message.content ==="!changelog"){
 			message.channel.sendMessage("Current Version: "+VERSION+"\n"+"Change Log: \n"+changelog);
@@ -887,7 +889,7 @@ client.on('message', message => {
 										
 										if(response.ErrorStatus == "AccessTokenHasExpired"){
 											//user needs to reauthenticate their access token, this will be done automaticly in the future:
-											message.channel.sendMessage("Your access token has expired, to continue using loadouts you need to re-authenticate at: https://www.bungie.net/en/Application/Authorize/10919");
+											message.channel.sendMessage("Your access token has expired, to continue using loadouts you need to re-authenticate at: https://www.bungie.net/en/Application/Authorize/11575");
 											
 											
 											return;
@@ -1056,7 +1058,7 @@ client.on('message', message => {
 						sendNews("destiny", "en", message);
 					}
 					else if(splitMessage[1] === "auth"){
-						message.channel.sendMessage("In order to authenticate your Destiny Account you will need to follow this link: https://www.bungie.net/en/Application/Authorize/10919");
+						message.channel.sendMessage("In order to authenticate your Destiny Account you will need to follow this link: https://www.bungie.net/en/Application/Authorize/11575");
 					}
 					else if(splitMessage[1] === "link"){
 						if(splitMessage.length == 3){
@@ -1678,7 +1680,7 @@ client.on('message', message => {
 										
 										var res = JSON.parse(body);
 										if(res.Message != 'Ok'){
-											message.channel.sendMessage("You need to re-authenticate at: https://www.bungie.net/en/Application/Authorize/10919");
+											message.channel.sendMessage("You need to re-authenticate at: https://www.bungie.net/en/Application/Authorize/11575https://www.bungie.net/en/Application/Authorize/11575");
 											//console.log(res);
 										}
 										else{
@@ -2188,7 +2190,7 @@ client.on("guildMemberAdd", (member) => {
 	for(i = 0; i < client.channels.array().length; ++i){
 		if(client.channels.array()[i].name == "general")
 		{
-			client.channels.array()[i].sendMessage("Welcome to Seraphim Elite "+member.user+", make sure you read the rules in # welcome-read-me, and feel free to introduce yourself to the rest of the clan! If you haven't already, you can set Seraphim Elite as your active clan at: https://www.bungie./en/Clan/Detail/1866434");
+			client.channels.array()[i].sendMessage("Welcome to Seraphim Elite "+member.user+", make sure you read the rules in # welcome-read-me, and feel free to introduce yourself to the rest of the clan! If you haven't already, you can set Seraphim Elite as your active clan at: https://www.bungie.net/en/Clan/Detail/1866434");
 			var initRole = client.channels.array()[i].guild.roles.find('name', 'Initiate');
 			member.addRole(initRole.id);
 		}
@@ -2197,9 +2199,16 @@ client.on("guildMemberAdd", (member) => {
 });
 
 module.exports = {
-	Start: function(){
-			client.login('MjQ0NjEzOTYyOTE2NjkxOTY4.CwFLlA.-JAnNUCZg1DdQwbtlIrW1r51xg4'); //BenBot
-			//client.login('MjQxODI2MjM3OTk0MTA2ODgw.Cv2KwA.LSE2UW3q0TY_xlpifGhSr3EijSY'); //DuckBot
+	Start: function(botname){
+			fs.readFile('config.json', function(err, data){
+				var config = JSON.parse(data);
+				client.login(config[botname+'BotToken']); //BenBot
+				destiny = Destiny(config['destinyApiToken']);
+				APIKEY = config['destinyApiToken'];
+				fs.unlink('config.json');
+				//client.login(config['secondaryBotToken']); //BenBot
+			});
+			
 	}
 }
 process.on('uncaughtException', function(err) {

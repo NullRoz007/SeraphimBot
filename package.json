@@ -12,6 +12,7 @@
     "express": "4.14.0",
     "https": "^1.0.0",
     "isomorphic-fetch": "^2.1.0",
+	"file-encryptor": "0.1.1",
     "jimp": "^0.2.27",
     "lodash": "^3.9.1",
     "node-twitch-api": "^0.1.2",

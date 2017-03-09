@@ -1645,6 +1645,70 @@ client.on('message', message => {
 							
 						}).catch(err => console.log(err));
 					}
+					else if(splitMessage[1] === "check"){
+						if(!isBotCommander(message)){
+							console.log("User is not a bot commander");
+							return;
+						}
+						
+						destiny.Advisors({
+							definitions: true
+						}).then(adv => {
+							
+							var promises = [];
+							
+							var crota_hash = adv.activities["crota"].display.activityHash;
+							var crotta_skulls;
+							
+							var vog_hash = adv.activities["vaultofglass"].display.activityHash;
+							var vog_skulls;
+							
+							promises.push(destiny.Manifest({
+								type: 'Activity',
+								hash: crota_hash
+								}).then(res => {
+									//console.log(res.activity);
+									crota_skulls = res.activity.skulls;
+									
+									//console.log(crota_skulls);
+								}));
+							promises.push(destiny.Manifest({
+								type: 'Activity',
+								hash: vog_hash
+								}).then(res => {
+									//console.log(res.activity);
+									vog_skulls = res.activity.skulls;
+
+									//console.log(vog_skulls);
+								}));
+								
+							Promise.all(promises)
+								.then( ans => {
+									if(vog_skulls.length == 0){
+										message.channel.sendMessage("No changes to VoG");
+									} else {
+										var output = "New VoG challenges found\n"
+										var i;
+										for(i = 0; i < vog_skulls.length; i++){
+											output = output + vog_skulls[i].displayName + "\n";
+										}
+										message.channel.sendMessage(output);
+									}
+									
+									if(crota_skulls.length == 0){
+										message.channel.sendMessage("No changes to Crota");
+									} else {
+										var output = "New Crota challenges found\n"
+										var i;
+										for(i = 0; i < crota_skulls.length; i++){
+											output = output + crota_skulls[i].displayName + "\n";
+										}
+										message.channel.sendMessage(output);
+									}
+								});
+	
+						});	
+					}
 					else if(splitMessage[1] === "accvendors"){
 						
 						for(i = 0; i < linked_users.length; i++){
@@ -2640,7 +2704,7 @@ function refreshAccessToken(membershipId, refreshT){
 	});
 }
 function isBotCommander(input){
-	console.log(input.member.roles);
+	//console.log(input.member.roles);
 	return input.member.roles.exists('name', 'Bot Commander')
 			
 }

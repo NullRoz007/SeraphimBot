@@ -142,6 +142,9 @@ client.on('message', message => {
 			message.channel.sendMessage("https://www.youtube.com/watch?v=L_jWHffIx5E");
 			message.channel.sendMessage("Somebody once told me.....");
 		}
+		else if (message.content === "!benson"){
+			message.channel.sendMessage("https://www.youtube.com/watch?v=bPFS1iZvlds");
+		}
 		else if (message.content === "!friday"){
 		
 			var today = new Date();
@@ -203,7 +206,38 @@ client.on('message', message => {
 		else if(message.content.split(' ').length >= 1){
 			var splitMessage = message.content.split(' ');	
 			
-			if(splitMessage[0] === "!post")
+			if(splitMessage[0] === "!clear"){
+				var amount = splitMessage[1];
+				if (hasModPerms(message)){
+				
+					var msgPromise = message.channel.fetchMessages({limit: amount}); 
+				
+					msgPromise.then(function (pastMsgs) {
+						console.log('Finished fetching messages...');
+						var promiseArray = pastMsgs.deleteAll();
+				
+						console.log(promiseArray.length);
+				
+						for (var i = 0; i < promiseArray.length; i++){
+							promiseArray[i].then(function (test){
+								console.log('Message deleted '+i+'/'+amount);
+							});
+							promiseArray[i].catch(function (err){
+								console.log('FAILURE DELETING MESSAGE', err);
+							});
+						}
+					});
+				
+					msgPromise.catch(function (err){
+						console.log('WE GOT ERR - 1', err);
+					});		
+							
+					} 
+				else {
+					message.reply('You are not a moderator');
+					}
+			}
+			else if(splitMessage[0] === "!post")
 			{	
 				console.log("Creating new event...");	
 				try
@@ -636,38 +670,6 @@ client.on('message', message => {
 					}
 					
 				}
-				else if(splitMessage[0] === "!clear"){
-				var amount = splitMessage[1];
-				if (hasModPerms(message)){
-				
-					var msgPromise = message.channel.fetchMessages({limit: amount}); 
-				
-					msgPromise.then(function (pastMsgs) {
-						console.log('Finished fetching messages...');
-						var promiseArray = pastMsgs.deleteAll();
-				
-						console.log(promiseArray.length);
-				
-						for (var i = 0; i < promiseArray.length; i++){
-							promiseArray[i].then(function (test){
-								console.log('Message deleted '+i+'/'+amount);
-							});
-							promiseArray[i].catch(function (err){
-								console.log('FAILURE DELETING MESSAGE', err);
-							});
-						}
-					});
-				
-					msgPromise.catch(function (err){
-						console.log('WE GOT ERR - 1', err);
-					});		
-							
-					} 
-				else {
-					message.reply('You are not a moderator');
-					}
-				}
-				
 				else if(splitMessage[0] === "!loadout"){
 					if(!isBotCommander(message)){
 						message.channel.sendMessage("This command is currently restricted to Bot Commanders only!");

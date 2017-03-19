@@ -1,8 +1,9 @@
 module.exports = {
-    Event: function(id, name, time, timezone, creator){
+    Event: function(id, name, date, time, timezone, creator){
         this.players = [];
         this.id = id;
         this.name = name;
+		this.date = date;
         this.startTime = time;
         this.timeZone = timezone;
 		this.creator = creator;
@@ -22,7 +23,12 @@ module.exports = {
             console.log('Player is not in event');
         }
         
-    }
+    },
+	editTime: function(event, date, time, timezone){
+		event.date = date;
+		event.startTime = time;
+		event.timeZone = timezone;
+	}
 }
 
 

@@ -63,10 +63,10 @@ var months = {
 	"11": "Nov",
 	"12": "Dec"
 }
-var VERSION = "1.3.7";
+var VERSION = "1.3.8";
 var changelog = VERSION+": \n" +
-				"	 1) Added !setmode <legacy/desktop>.\n"+
-				"	 2) Actually fixed !clear <count>.";
+				"	 1) Added a Date field to !post. !groups, !group, !mygroups display a date.\n"+
+				"	 2) Added !changetime. Group creators can change the date & time of a group.";
 
 				
 client.on('ready', () => {
@@ -175,7 +175,7 @@ client.on('message', message => {
 				for(i = 0; i < user_events.length; i++){
 					try{
 						
-						output += "ID: "+user_events[i].id+", "+user_events[i].name+ ", Start Time: "+user_events[i].startTime + "-"+user_events[i].timeZone +"\n";
+						output += "ID: "+user_events[i].id+", "+user_events[i].name+ ", Date: "+events[i].date+ ", Start Time: "+user_events[i].startTime + "-"+user_events[i].timeZone +"\n";
 					}
 					catch(err){
 						message.channel.sendMessage(err);
@@ -192,7 +192,7 @@ client.on('message', message => {
 				for(i = 0; i < events.length; i++){
 					try{
 						
-						output += "ID: "+events[i].id+", "+events[i].name+ ", Start Time: "+events[i].startTime + "-"+events[i].timeZone +"\n";
+						output += "ID: "+events[i].id+", "+events[i].name+ ", Date: "+events[i].date+ ", Start Time: "+events[i].startTime + "-"+events[i].timeZone +"\n";
 					}
 					catch(err){
 						message.channel.sendMessage(err);
@@ -310,9 +310,14 @@ client.on('message', message => {
 						}
 					}
 						
-					var newEvent = new Events.Event(events.length + 1, fullName, splitMessage[2 + n], splitMessage[3 + n], message.member.user.username); 
+					var newEvent = new Events.Event(events.length + 1, fullName, splitMessage[2 + n], splitMessage[3 + n], splitMessage[4 + n], message.member.user.username);
 					
-					message.channel.sendMessage("```\n================================\n"+fullName+"\n================================\nStart Time: "+newEvent.startTime + "-"+newEvent.timeZone+"\n================================\nGroup ID: "+newEvent.id+"\n================================```");
+					message.channel.sendMessage(
+						"```\n================================\n"+fullName+
+						"\n================================\nDate: "+newEvent.date+
+						"\nStart Time: "+newEvent.startTime + "-"+newEvent.timeZone+
+						"\n================================\nGroup ID: "+newEvent.id+
+						"\n================================```");
 					Events.addPlayer(newEvent, message.member.user.username);
 					//message.reply("Creating your event: ID="+event.id+", Name="+event.name+", Start time="+event.startTime+"-"+event.timeZone);
 					console.log(newEvent);
@@ -328,54 +333,84 @@ client.on('message', message => {
 			else if(splitMessage[0] == "!group"){
 				if(splitMessage.length == 2 || splitMessage.length == 3){
 					if(splitMessage.length == 2 || splitMessage.length == 3){
-					var id = splitMessage[1];
-					if(id - 1 < events.length && id > 0){
-						var event = events[parseInt(id) - 1];
-						
-						const embed = new Discord.RichEmbed()
-							.setTitle(event.name)
-							.setColor(0x00AE86)
-							.addField("Start Time", event.startTime + "-" + event.timeZone)
+						var id = splitMessage[1];
+						if(id - 1 < events.length && id > 0){
+							var event = events[parseInt(id) - 1];
 							
-						
+							const embed = new Discord.RichEmbed()
+								.setTitle(event.name)
+								.setColor(0x00AE86)
+								.addField("Date", event.date)
+								.addField("Start Time", event.startTime + "-" + event.timeZone)
+								
 							
-						output = "```\n================================\n"+event.name+"\n================================\nStart Time: "+event.startTime + "-"+event.timeZone+"\n================================\nGroup ID: "+event.id+"\n================================"+"\nRoster:\n";
-						var playerIndex = 1;
-						var players = "";
-						for(i = 0; i < event.players.length; i++){
-							if(playerIndex==7)
-							{
-								players+= "Substitutes:\n";
-								output += "Substitutes:\n";
+								
+							output = "```\n================================\n"+event.name+"\n================================\nDate: "+event.date+"\nStart Time: "+event.startTime + "-"+event.timeZone+"\n================================\nGroup ID: "+event.id+"\n================================"+"\nRoster:\n";
+							var playerIndex = 1;
+							var players = "";
+							for(i = 0; i < event.players.length; i++){
+								if(playerIndex==7)
+								{
+									players+= "Substitutes:\n";
+									output += "Substitutes:\n";
+								}
+								players += playerIndex+". "+event.players[i]+"\n";
+								output += playerIndex+". "+event.players[i]+"\n";
+								++playerIndex;
 							}
-							players += playerIndex+". "+event.players[i]+"\n";
-							output += playerIndex+". "+event.players[i]+"\n";
-							++playerIndex;
-						}
-						
-						if(players == ""){
-							console.log("players is empty!")
-							embed.addField("This group is empty.", "use !joingroup "+id+" to join it, or if you are the groups creator you can use !removegroup "+id+" to delete it.");
-						}
-						else{
-							embed.addField("Players", players);
-						}
-						console.log(splitMessage[2]);
+							
+							if(players == ""){
+								console.log("players is empty!")
+								embed.addField("This group is empty.", "use !joingroup "+id+" to join it, or if you are the groups creator you can use !removegroup "+id+" to delete it.");
+							}
+							else{
+								embed.addField("Players", players);
+							}
+							console.log(splitMessage[2]);
 
-						
-						if(splitMessage[2] === "legacy" || getUserMode(message) == "legacy"){
-							message.channel.sendMessage(output+"```");
-						}
-						else if(getUserMode(message) == "desktop"){
-							message.channel.sendEmbed(embed);
-						}
+							
+							if(splitMessage[2] === "legacy" || getUserMode(message) == "legacy"){
+								message.channel.sendMessage(output+"```");
+							}
+							else if(getUserMode(message) == "desktop"){
+								message.channel.sendEmbed(embed);
+							}
 
-						else{
-							message.channel.sendEmbed(embed);
+							else{
+								message.channel.sendEmbed(embed);
+							}
 						}
 					}
 				}
 			}
+			else if(splitMessage[0] == "!changetime"){
+				if(splitMessage.length == 5){
+					var id = splitMessage[1];
+					if(id - 1 < events.length && id > 0){
+						var event = events.find(x => x.id == id);
+						
+						if((event.creator == message.member.user.username) || hasModPerms(message)){
+							Events.editTime(event, splitMessage[2], splitMessage[3], splitMessage[4]);
+							message.channel.sendMessage(
+								"```\n================================\n"+event.name+
+								"\n================================\nDate: "+event.date+
+								"\nStart Time: "+event.startTime + "-"+event.timeZone+
+								"\n================================\nGroup ID: "+event.id+
+								"\n================================```");
+								
+							updateGroupsJSON();
+						} else {
+							// mod perms
+							message.channel.sendMessage("Only the group creator or a Moderator can do that.")
+						}
+					} else {
+						// group not found
+						message.channel.sendMessage("Group not found.")
+					}
+				} else {
+					// Invalid sytax
+					message.channel.sendMessage("Missing/too many arguments. Here is an example:\n```\n!changetime 2 3/17 8pm EST\n```");
+				}
 			}
 			else if(splitMessage[0] == "!joingroup"){
 				if(splitMessage.length == 2){
@@ -598,14 +633,15 @@ client.on('message', message => {
 				
 			
 			var h_lfg = "**LFG Commands**\n" +
-						"!post <activity> <time> <timezone>  :  Creates a new group. <activity> can be an abbreviation like wotm or vog. If you do not enter a recognized abbreviation, it will take whatever you entered. You can also add -n or -h to the activity to show normal or hard mode. To use a name with spaces in it put \" around it. \n" +
+						"!post <activity> <date> <time> <timezone>  :  Creates a new group. <activity> can be an abbreviation like wotm or vog. If you do not enter a recognized abbreviation, it will take whatever you entered. You can also add -n or -h to the activity to show normal or hard mode. To use a name with spaces in it put \" around it. \n" +
 						"!groups  :  Displays all active groups\n" +
 						"!mygroups : Display all active groups that you are a member of\n"+
 						"!group <ID> <option> :  Displays a specific group with the given ID\n" +
 						"!joingroup <ID>  :  Join the group with the given ID\n" +
 						"!leavegroup <ID>  :  Leave the group with the given ID\n" +
 						"!removegroup <ID>  :  Removes the group with the given ID. Removed groups erased and can no longer be joined. Only the creator can use this\n" +
-						"!rolecall <ID>  :  @ mentions everyone in the given group. Please do not abuse this.\n\n";
+						"!rolecall <ID>  :  @ mentions everyone in the given group. Please do not abuse this.\n\n"; +
+						"!changetime <ID> <Date> <Time> <Timezone>  :  Changes the date and time for that group. Must be the group creator or a moderator to use this."
 			
 			var h_des = "**Destiny Commands**\n"+
 						"!destiny link <psn_name> : Link your Discord account to your Destiny account (REQUIRED)\n" +

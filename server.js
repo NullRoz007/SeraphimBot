@@ -130,6 +130,7 @@ app.get('/authenticate', function(req, res){
 									console.log("3")
 									var jsonString = JSON.stringify(linked_users);
 									fs.writeFile("home/links.json", jsonString);
+									console.log("Done!");
 								}
 								catch(err){
 									console.log(err);
@@ -155,9 +156,30 @@ app.get('/authenticate', function(req, res){
 });
 
 
-/*app.get('/groups/', function(req, res){
-	return res.send(JSON.stringify(events));
+app.get('/groups/', function(req, res){
+	fs.exists(__dirname + "/home/events.json", function(exists){
+		if(exists){
+			fs.readFile(__dirname + "/home/events.json", (err, data) => {
+				try{
+					console.log(data);
+					var jObject = JSON.parse(data); 
+					var events = jObject;
+					return res.send(JSON.stringify(events));
+				}
+				catch(err){
+					console.log(err)
+				}
+				
+			});
+			
+		}
+		else{
+			console.log("Event file does not exist.");
+		}
+		
+	});
 });
+/*
 app.get('/links/', function(req, res){
 	return res.send(JSON.stringify(linked_users));
 });

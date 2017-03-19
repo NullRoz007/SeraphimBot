@@ -9,7 +9,7 @@ console.log("Starting the Discord client...")
 Server.on('auth', function() {
 	var SeraBot = require('./dis');
 	//Bot names are main/secondary:
-	SeraBot.Start("main");
+	//SeraBot.Start("main");
 	SeraBot.Start("secondary");
 });
 

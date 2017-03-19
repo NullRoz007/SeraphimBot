@@ -63,16 +63,18 @@ var months = {
 	"11": "Nov",
 	"12": "Dec"
 }
-var VERSION = "1.3.4";
+var VERSION = "1.3.7";
 var changelog = VERSION+": \n" +
-				"	 1) Deplpoyed anti-russian hacker defenses.";
+				"	 1) Added !setmode <legacy/desktop>.\n"+
+				"	 2) Actually fixed !clear <count>.";
+
 				
 client.on('ready', () => {
 	console.log('Client Connected!');	
 	updateGroupsList();
 	updateLinksList();
 	updateLoadoutsList();
-	
+	updateUserModesList();
 	client.user.setGame("Ver: " + VERSION)
 		.then(console.log("Set the game status"))
 		.catch(err => console.log(err));
@@ -159,10 +161,12 @@ client.on('message', message => {
 		
 			message.channel.sendMessage("https://youtu.be/Tctfq4tplQ4?t=22s");	
 		}
-		
+
+	
 		else if (message.content === "!twitch") {
-			getSeraTwitch(message);
+			getTwitch(message, "seraphimelite1");
 		}
+
 		
 		else if(message.content === "!mygroups"){
 			var username = message.member.user.username;
@@ -205,7 +209,6 @@ client.on('message', message => {
 		}
 		else if(message.content.split(' ').length >= 1){
 			var splitMessage = message.content.split(' ');	
-			
 			if(splitMessage[0] === "!clear"){
 				var amount = splitMessage[1];
 				if (hasModPerms(message)){
@@ -232,10 +235,10 @@ client.on('message', message => {
 						console.log('WE GOT ERR - 1', err);
 					});		
 							
-					} 
+				} 
 				else {
 					message.reply('You are not a moderator');
-					}
+				}
 			}
 			else if(splitMessage[0] === "!post")
 			{	
@@ -262,7 +265,6 @@ client.on('message', message => {
 					}
 						
 					else{
-						
 						name = splitMessage[1];
 						var diff = "";
 						
@@ -359,9 +361,15 @@ client.on('message', message => {
 							embed.addField("Players", players);
 						}
 						console.log(splitMessage[2]);
-						if(splitMessage[2] === "legacy"){
+
+						
+						if(splitMessage[2] === "legacy" || getUserMode(message) == "legacy"){
 							message.channel.sendMessage(output+"```");
 						}
+						else if(getUserMode(message) == "desktop"){
+							message.channel.sendEmbed(embed);
+						}
+
 						else{
 							message.channel.sendEmbed(embed);
 						}
@@ -708,25 +716,26 @@ client.on('message', message => {
 									headers: {
 										"X-API-Key": APIKEY
 									},
-									url: "http://www.bungie.net/Platform/Destiny/2/Account/"+linked_users[x].destinyId+"/Character/"+loadout.characterId+"/Inventory/"+loadout.items[0].sub_insId+"/"
+									url: "http://www.bungie.net/Platform/Destiny/2/Account/"+linked_users[x].destinyId+"/Character/"+loadout.characterId+"/Inventory/"+loadout.items[0].itemId+"/"
 								};
 								var options_prim = {
 									headers: {
 										"X-API-Key": APIKEY
 									},
-									url: "http://www.bungie.net/Platform/Destiny/2/Account/"+linked_users[x].destinyId+"/Character/"+loadout.characterId+"/Inventory/"+loadout.items[0].prim_insId+"/"
+									url: "http://www.bungie.net/Platform/Destiny/2/Account/"+linked_users[x].destinyId+"/Character/"+loadout.characterId+"/Inventory/"+loadout.items[1].itemId+"/"
+
 								};
 								var options_sec = {
 									headers: {
 										"X-API-Key": APIKEY
 									},
-									url: "http://www.bungie.net/Platform/Destiny/2/Account/"+linked_users[x].destinyId+"/Character/"+loadout.characterId+"/Inventory/"+loadout.items[0].sec_insId+"/"
+									url: "http://www.bungie.net/Platform/Destiny/2/Account/"+linked_users[x].destinyId+"/Character/"+loadout.characterId+"/Inventory/"+loadout.items[2].itemId+"/"
 								}	
 								var options_heavy = {
 									headers: {
 										"X-API-Key": APIKEY
 									},
-									url: "http://www.bungie.net/Platform/Destiny/2/Account/"+linked_users[x].destinyId+"/Character/"+loadout.characterId+"/Inventory/"+loadout.items[0].heavy_insId+"/"
+									url: "http://www.bungie.net/Platform/Destiny/2/Account/"+linked_users[x].destinyId+"/Character/"+loadout.characterId+"/Inventory/"+loadout.items[3].itemId+"/"
 								}
 								var items_string = "";
 								var icons = [];
@@ -785,38 +794,11 @@ client.on('message', message => {
 																	var name = sub.Response.data.inventoryItem.itemName;
 																	var icon = sub.Response.data.inventoryItem.icon;
 																	console.log(icons);
-																	
-																	Jimp.read("res/loadoutBackground.png", function (err, image) {
-																		Jimp.read("http://www.bungie.net"+icons[0], function (err, iconOne) {
-																			image.blit(iconOne, 0, 0);
-																			
-																			Jimp.read("http://www.bungie.net"+icons[2], function (err, iconTwo) {
-																				image.blit(iconTwo, 96, 0);
-																				
-																				Jimp.read("http://www.bungie.net"+icons[3], function (err, iconThree) {
-																					if(err){
-																						message.channel.sendMessage("Error: "+err);
-																					}
-																					image.blit(iconThree, 192, 0);
-																					image.write("home/tmp.png", function(err){
-																						if(err){
-																							console.log(err);
-																						}
-																						embed.setTitle(loadout.name + " - "+name)
-																						embed.setDescription(items_string)
-																						embed.setThumbnail("http://www.bungie.net/"+icon);
-																						embed.setImage("http://seraphimbot.mod.bz/image/tmp.png");
-																						message.channel.sendEmbed(embed);
-																					
-																						setTimeout(function() {
-																							fs.unlink("home/tmp.png");
-																						}, 1000);
-																					});
-																				});
-																				
-																			});
-																		});
-																	});
+																	embed.setTitle(loadout.name + " - "+name);
+																	embed.setDescription(items_string);
+																	embed.setThumbnail("http://www.bungie.net/"+icon);
+																	message.channel.sendEmbed(embed);
+																
 																});
 															});
 														});
@@ -829,26 +811,6 @@ client.on('message', message => {
 											
 										});
 									});
-									
-									/*destiny.Manifest({
-										type: 'InventoryItem',
-										hash: item_hash
-									}).then(res => {
-										var embed = new Discord.RichEmbed();
-										var itemName = res.inventoryItem.itemName;
-										var itemIcon = res.inventoryItem.icon;
-										console.log(itemName);
-										console.log(itemIcon);
-										embed.setTitle(loadout.name+" - "+itemName);
-										console.log("1");
-										embed.setDescription("Items:");
-										console.log("2");
-										embed.setThumbnail("http://www.bungie.net/"+itemIcon);
-										console.log("3");
-										
-										message.channel.sendEmbed(embed);
-									});
-									*/
 								});
 							}
 						}
@@ -856,7 +818,9 @@ client.on('message', message => {
 					else if(splitMessage[1] === "equip"){
 						for(x = 0; x < linked_users.length; x++){
 							if(linked_users[x].discordName == message.member.user.username){
-								var token = linked_users[x].token;
+								//var token = linked_users[x].token;
+								var linker = linked_users[x];
+
 								var refreshToken = linked_users[x].refreshToken;
 								var membershipId = linked_users[x].destinyId;
 								var index = Number(splitMessage[2]);
@@ -866,24 +830,30 @@ client.on('message', message => {
 									console.log("user does not own loadout: "+loadout);
 									return;
 								}
-								
+
+								updateLinksList();
 								refreshAccessToken(membershipId, refreshToken);
-								
+								var token = linked_users[x].token;
+
 								console.log(loadout);
 								destiny.Account({
 									membershipType: 2,
 									membershipId: membershipId
 								}).then(acc => {
 									//console.log(acc);
+								
+									setupLoadout(loadout, acc.characters[0].characterBase.characterId, linker);
 									var statuses = [];
 									var sub_options = {
 										headers: {
-											'X-API-KEY': 'af70e027a7694afc8ed613589bf04a60',
+											'X-API-KEY': APIKEY,
 											'Authorization': 'Bearer '+token
 										},
 										url: 'https://www.bungie.net/Platform/Destiny/EquipItem/',
-										body: JSON.stringify({characterId: acc.characters[0].characterBase.characterId, itemId: loadout.items[0].sub_insId, membershipType: 2})
+										body: JSON.stringify({characterId: acc.characters[0].characterBase.characterId, itemId: loadout.items[0].itemId, membershipType: 2})
 									};
+									var statuses = [];
+
 									request.post(sub_options, function(error, response, body){
 										var response = JSON.parse(body);
 										console.log(response);
@@ -903,11 +873,12 @@ client.on('message', message => {
 										}
 										var prim_options = {
 											headers: {
-												'X-API-KEY': 'af70e027a7694afc8ed613589bf04a60',
+												'X-API-KEY': APIKEY,
 												'Authorization': 'Bearer '+token
 											},
 											url: 'https://www.bungie.net/Platform/Destiny/EquipItem/',
-											body: JSON.stringify({characterId: acc.characters[0].characterBase.characterId, itemId: loadout.items[0].prim_insId, membershipType: 2})
+											body: JSON.stringify({characterId: acc.characters[0].characterBase.characterId, itemId: loadout.items[1].itemId, membershipType: 2})
+
 										};
 										setTimeout(function() {
 											request.post(prim_options, function(error, response, body){
@@ -920,11 +891,11 @@ client.on('message', message => {
 												}
 												var sec_options = {
 													headers: {
-														'X-API-KEY': 'af70e027a7694afc8ed613589bf04a60',
+														'X-API-KEY': APIKEY,
 														'Authorization': 'Bearer '+token
 													},
 													url: 'https://www.bungie.net/Platform/Destiny/EquipItem/',
-													body: JSON.stringify({characterId: acc.characters[0].characterBase.characterId, itemId: loadout.items[0].sec_insId, membershipType: 2})
+													body: JSON.stringify({characterId: acc.characters[0].characterBase.characterId, itemId: loadout.items[2].itemId, membershipType: 2})
 												};
 												setTimeout(function() {
 													request.post(sec_options, function(error, response, body){
@@ -936,11 +907,11 @@ client.on('message', message => {
 														}
 														var heavy_options = {
 															headers: {
-																'X-API-KEY': 'af70e027a7694afc8ed613589bf04a60',
+																'X-API-KEY': APIKEY,
 																'Authorization': 'Bearer '+token
 															},
 															url: 'https://www.bungie.net/Platform/Destiny/EquipItem/',
-															body: JSON.stringify({characterId: acc.characters[0].characterBase.characterId, itemId: loadout.items[0].heavy_insId, membershipType: 2})
+															body: JSON.stringify({characterId: acc.characters[0].characterBase.characterId, itemId: loadout.items[3].itemId, membershipType: 2})
 														};
 														setTimeout(function() {
 															request.post(heavy_options, function(error, response, body){
@@ -1000,56 +971,55 @@ client.on('message', message => {
 										characterId: id
 									}).then(inv => {
 										var sub_insId;
+										var sub_hash;
 										var prim_insId;
+										var prim_hash;
 										var sec_insId;
+										var sec_hash;
 										var heavy_insId;
+										var heavy_hash;
 										
 										var subclass = inv.buckets.Equippable[0].items;
 										sub_insId = subclass[0].itemInstanceId;
-										
+										sub_hash = subclass[0].itemHash;
+										console.log(subclass[0]);
 										var prim = inv.buckets.Equippable[1].items;
 										prim_insId = prim[0].itemInstanceId;
-										
+										prim_hash = prim[0].itemHash;
 										var sec = inv.buckets.Equippable[2].items;
 										sec_insId = sec[0].itemInstanceId;
-										
+										sec_hash = sec[0].itemHash;
 										var heavy = inv.buckets.Equippable[3].items;
 										heavy_insId = heavy[0].itemInstanceId;
-										
+										heavy_hash = heavy[0].itemHash;
+
 										console.log("SUB: "+sub_insId);
 										console.log("PRIM: "+prim_insId);
 										console.log("SEC: "+sec_insId);
 										console.log("HEAVY: "+heavy_insId);
-										loadout.items = [{ sub_insId, prim_insId, sec_insId, heavy_insId }];
+										loadout.items = [
+											{itemHash: String(sub_hash), itemId: sub_insId, characterId: id}, 
+											{itemHash: String(prim_hash), itemId: prim_insId , characterId: id}, 
+											{itemHash: String(sec_hash), itemId: sec_insId, characterId: id}, 
+											{itemHash: String(heavy_hash), itemId: heavy_insId, characterId: id }
+										];
 										
 										console.log(loadout);
 										loadouts.push(loadout);
 										
 										message.channel.sendMessage("Created loadout: "+loadout.name);
 										updateLoadoutsJSON();
-										/*destiny.Manifest({
-												type: 'InventoryItem',
-												hash: prim[0].itemHash
-											}).then(item => {
-												console.log(item);
-												message.channel.sendMessage("Saving: "+item.inventoryItem.itemName);
-										});*/
-										/*for(i = 0; i < inv.buckets.Equippable.length; i++){
-											var instanceId = inv.buckets.Equippable[i].itemInstanceId;
-											var itemHash = inv.buckets.Equippable[i].itemHash;
-											console.log("HASH: "+instanceId+", INS: "+instanceId);
-											
-											
-											loadout.items.append(item);
-										}*/
+										
 									});
-									
-									/*var inventory = character.inventory;
-									
-									console.log(inventory);*/
 								});
 							}
 						}
+					}
+				}
+				else if(splitMessage[0] === "!setmode"){
+					if(splitMessage[1] != null){
+						setUserMode(message, splitMessage[1]);
+						updateUserModesJSON();
 					}
 				}
 				else if(splitMessage[0] === "!destiny"){
@@ -1737,7 +1707,7 @@ client.on('message', message => {
 									//console.log("n"+token);
 									var options = {
 										headers: {
-											'X-API-KEY': 'af70e027a7694afc8ed613589bf04a60',
+											'X-API-KEY': APIKEY,
 											'Authorization': 'Bearer '+token
 										},
 										url: 'https://www.bungie.net/Platform/Destiny/2/MyAccount/Character/'+characterId+'/Vendors/Summaries/'
@@ -1758,7 +1728,7 @@ client.on('message', message => {
 												//console.log(vendorHash);
 												var vendor_options = {
 													headers: {
-														'X-API-KEY': 'af70e027a7694afc8ed613589bf04a60',
+														'X-API-KEY': APIKEY,
 														'Authorization': 'Bearer '+token
 													},
 													url: 'https://www.bungie.net/Platform/Destiny/2/MyAccount/Character/'+characterId+'/Vendor/'+vendorHash
@@ -1871,16 +1841,17 @@ client.on('message', message => {
 							var messageName = String(message.member.user.username);
 							for(i = 0; i < linked_users.length; i++){
 								if(String(linked_users[i].discordName) == messageName){
-									if(messageName == "Ben (NullRoz007)"){
+									/*if(messageName == "Ben (NullRoz007)"){
 										message.channel.sendMessage(messageName+"'s Elo is 9999");
-									}
-									else{
+									}*/
+									//else{
 										var id = linked_users[i].destinyId;
 										console.log(id);
 										guardianApi.getElo(id, function(elo){
-											message.channel.sendMessage(messageName+"'s Average Elo is "+elo);
+											var rounded = Math.ceil(elo);
+											message.channel.sendMessage(messageName+"'s Average Elo is "+rounded);
 										});
-									}
+									//}
 								}
 							}
 						}
@@ -2397,6 +2368,19 @@ function findUserNoMsg(name){
 	}
 	return foundMember;
 }
+ 
+function updateUserModesJSON(){
+	if(user_modes.length > 0){
+		try{
+			var userModesString = JSON.stringify(user_modes);
+			fs.writeFile('home/usermodes.json', userModesString);
+		}
+		catch(err){
+			console.log(err);
+		}
+	}
+}
+
 function updateGroupsJSON(){
 	if(events.length > 0){
 		try{
@@ -2407,7 +2391,6 @@ function updateGroupsJSON(){
 		}
 		catch(err){
 			console.log(err);
-			fs.writeFile('home/events.json', "");
 		}
 	}
 	
@@ -2452,12 +2435,25 @@ function updateLinksList(){
 		
 	});
 }
+ 
+function updateUserModesList(){
+	fs.exists("home/usermodes.json", function(exists){
+		if(exists){
+			fs.readFile('home/usermodes.json', (err, data) => {
+				var arrayObject = JSON.parse(data);
+				user_modes = arrayObject;
+			});
+			
+		}
+		else{
+			console.log("usermodes file does not exist.");
+		}
+		
+	});
+}
 function exitHandler(options, err) {
     if (options.cleanup) {
-	    console.log("Saving groups...")
-	    updateGroupsJSON();
-		updateGroupsList();
-	    
+	    //we don't need to do anything with this anymore.
     }
     else if (err) 
     {
@@ -2473,6 +2469,44 @@ function exitHandler(options, err) {
 process.on('exit', exitHandler.bind(null,{cleanup:true}));
 
 process.on('SIGINT', exitHandler.bind(null, {exit:true}));
+ 
+function getUserMode(message){
+	var index = getIndexOfUserMode(message);
+	if (index == -1){
+		return null;
+	}
+	var usermode = user_modes[index];
+	return usermode.mode;
+}
+function getIndexOfUserMode(message){
+	for(i = 0; i < user_modes.length; i++){
+		if(user_modes[i].username == message.member.user.username){
+			return i;
+		}
+	}
+	return -1;
+}
+function setUserMode(message, usermode){
+	console.log(message.member.user.username);
+	if(modeIsSet(message)){
+		console.log("setting user: "+message.member.user.username+" to "+usermode);
+		var index = getIndexOfUserMode(message);
+		user_modes[index].mode = usermode;
+		
+	}
+	else{
+		console.log("adding new usermode to "+message.member.user.username);
+		user_modes.push({username: message.member.user.username, mode: usermode});
+	}
+}
+function modeIsSet(message){
+	for(i = 0; i < user_modes.length; i++){
+		if(user_modes[i].username == message.member.user.username){
+			return true;
+		}
+	}
+	return false;
+}
 
 function updateGroupsList(){
 	fs.exists("home/events.json", function(exists){
@@ -2566,7 +2600,7 @@ function sendNews(type, lang, message){
 		}
 	});
 }
-function getSeraTwitch(message) {
+function getTwitch(message, channel) {
 
     var baseoptions = {
         url: 'https://api.twitch.tv/kraken/streams/seraphimelite1',
@@ -2695,9 +2729,10 @@ function refreshAccessToken(membershipId, refreshT){
 			for(i = 0; i < linked_users.length; i++){
 				var linker = linked_users[i];
 				if(linker.destinyId == membershipId){
-					linked_users[i].token = newAccessToken;
-					linked_users[i].refreshToken = newRefreshToken;
-					
+					var new_linker = linked_users[i];
+					new_linker.token = newAccessToken;
+					new_linker.refreshToken = newRefreshToken;
+					linked_users[i] = new_linker;
 					updateLinksJSON();
 				}
 			}
@@ -2705,6 +2740,69 @@ function refreshAccessToken(membershipId, refreshT){
 		
 	});
 }
+ 
+function setupLoadout(loadout, char_id, linker){
+	//we want to skip the subclass, so we start at 1:
+	//Every thing is so wrong with this, I don't even know.
+	for(i = 1; i < loadout.items.length; i++){
+		var item = loadout.items[i];
+		if(item.characterId != char_id){
+			//first we need to equip a new item so that we can move our item to the vault, incase it's equipped on the character, this part doesn't work:
+			destiny.Inventory({
+				membershipType: 2,
+				membershipId: loadout.owner,
+				characterId: item.characterId
+			}).then(res => {
+				console.log(res);
+				var slot = inv.buckets.Equippable[i].items;
+				var replacement_insId = slot[0].itemInstanceId == item.itemId ? slot[1].itemInstanceId : slot[0].itemInstanceId;
+				var options = {
+					headers: {
+						'X-API-KEY': APIKEY,
+						'Authorization': 'Bearer '+linker.token
+					},
+					url: 'https://www.bungie.net/platform/Destiny/EquipItem/',
+					body: JSON.stringify({membershipType: 2, itemId: replacement_insId, characterId: item.characterId})
+				};
+				request.post(options, function(error, response, body){
+					console.log("ITEM SWAP: "+response);
+					var payload = {
+						itemReferenceHash: item.itemId,
+						stackSize: 0,
+						transferToVault: false,
+						itemId: item.itemHash,
+						characterId: item.characterId,
+						membershipType: 2
+					};
+					console.log("refHash: "+item.itemHash);
+					console.log("insId: "+item.itemId);
+					console.log("charId: "+char_id);
+					
+					var options = {
+						headers: {
+							'X-API-KEY': APIKEY,
+							'Authorization': 'Bearer '+linker.token
+						},
+						url: 'https://www.bungie.net/Platform/Destiny/TransferItem/',
+						body: JSON.stringify({membershipType: 2, itemReferenceHash: item.itemHash, itemId: item.itemId, stackSize: 1, characterId: item.characterId, transferToVault: true})
+						//body: JSON.stringify({itemReferenceHash: String(item.itemId), stackSize: 0, transferToVault: false, itemId: String(item.itemHash), characterId: String(item.characterId), membershipType: 2})
+					};
+					console.log("Moving item to vault: "+item.itemId);
+					request.post(options, function(error, response, body){
+						console.log(response.body);
+					});
+				});
+			});
+			
+			
+			
+		}
+		else{
+			console.log("User is on correct character")
+		}
+	}
+}
+
 function isBotCommander(input){
 	//console.log(input.member.roles);
 	return input.member.roles.exists('name', 'Bot Commander')

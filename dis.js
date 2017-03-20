@@ -332,55 +332,59 @@ client.on('message', message => {
 			}
 			else if(splitMessage[0] == "!group"){
 				if(splitMessage.length == 2 || splitMessage.length == 3){
-					if(splitMessage.length == 2 || splitMessage.length == 3){
-						var id = splitMessage[1];
-						if(id - 1 < events.length && id > 0){
-							var event = events[parseInt(id) - 1];
-							
-							const embed = new Discord.RichEmbed()
-								.setTitle(event.name)
-								.setColor(0x00AE86)
-								.addField("Date", event.date)
-								.addField("Start Time", event.startTime + "-" + event.timeZone)
+					var id = splitMessage[1];
+					if(id - 1 < events.length && id > 0){
+						var event = events[parseInt(id) - 1];
+						generateEventCountdown(event, (timezone) => {
+							message.channel.sendMessage("Using timezone: "+timezone);
+						});
+						
+						const embed = new Discord.RichEmbed()
+							.setTitle(event.name)
+							.setColor(0x00AE86)
+							.addField("Date", event.date)
+							.addField("Start Time", event.startTime + "-" + event.timeZone)
 								
 							
 								
-							output = "```\n================================\n"+event.name+"\n================================\nDate: "+event.date+"\nStart Time: "+event.startTime + "-"+event.timeZone+"\n================================\nGroup ID: "+event.id+"\n================================"+"\nRoster:\n";
-							var playerIndex = 1;
-							var players = "";
-							for(i = 0; i < event.players.length; i++){
-								if(playerIndex==7)
-								{
-									players+= "Substitutes:\n";
-									output += "Substitutes:\n";
-								}
-								players += playerIndex+". "+event.players[i]+"\n";
-								output += playerIndex+". "+event.players[i]+"\n";
-								++playerIndex;
+						output = "```\n================================\n"+event.name+"\n================================\nDate: "+event.date+"\nStart Time: "+event.startTime + "-"+event.timeZone+"\n================================\nGroup ID: "+event.id+"\n================================"+"\nRoster:\n";
+						var playerIndex = 1;
+						var players = "";
+						for(i = 0; i < event.players.length; i++){
+							if(playerIndex==7)
+							{
+								players+= "Substitutes:\n";
+								output += "Substitutes:\n";
 							}
+							players += playerIndex+". "+event.players[i]+"\n";
+							output += playerIndex+". "+event.players[i]+"\n";
+							++playerIndex;
+						}
 							
-							if(players == ""){
-								console.log("players is empty!")
-								embed.addField("This group is empty.", "use !joingroup "+id+" to join it, or if you are the groups creator you can use !removegroup "+id+" to delete it.");
-							}
-							else{
-								embed.addField("Players", players);
-							}
-							console.log(splitMessage[2]);
+						if(players == ""){
+							console.log("players is empty!")
+							embed.addField("This group is empty.", "use !joingroup "+id+" to join it, or if you are the groups creator you can use !removegroup "+id+" to delete it.");
+						}
+						else{
+							embed.addField("Players", players);
+						}
+						console.log(splitMessage[2]);
 
 							
-							if(splitMessage[2] === "legacy" || getUserMode(message) == "legacy"){
-								message.channel.sendMessage(output+"```");
-							}
-							else if(getUserMode(message) == "desktop"){
-								message.channel.sendEmbed(embed);
-							}
-
-							else{
-								message.channel.sendEmbed(embed);
-							}
+						if(splitMessage[2] === "legacy" || getUserMode(message) == "legacy"){
+							message.channel.sendMessage(output+"```");
+						}
+						else if(getUserMode(message) == "desktop"){
+							message.channel.sendEmbed(embed);
+						}
+						else{
+							message.channel.sendEmbed(embed);
 						}
 					}
+					
+				}
+				else{
+					sendCommandError(message, "  it's missing/too many arguments", "!group 1");
 				}
 			}
 			else if(splitMessage[0] == "!changetime"){
@@ -409,7 +413,8 @@ client.on('message', message => {
 					}
 				} else {
 					// Invalid sytax
-					message.channel.sendMessage("Missing/too many arguments. Here is an example:\n```\n!changetime 2 3/17 8pm EST\n```");
+					sendCommandError(message, " it's missing/too many arguments", "!changetime 2 3/17 8pm EST");
+					//message.channel.sendMessage("Missing/too many arguments. Here is an example:\n```\n!changetime 2 3/17 8pm EST\n```");
 				}
 			}
 			else if(splitMessage[0] == "!joingroup"){
@@ -1092,6 +1097,9 @@ client.on('message', message => {
 							});
 							
 						}
+						else{
+							sendCommandError(message, " it's missing/too many arguments", "!destiny link NullRoz007")
+						}
 					}
 					else if(splitMessage[1] === 'unlink'){
 						if(splitMessage.length == 2){
@@ -1228,67 +1236,77 @@ client.on('message', message => {
 						
 					}
 					else if(splitMessage[1] === "event"){
-						var name = splitMessage[2];
-						console.log(name);
-						destiny.Advisors({
-							definitions: true
-						}).then(res => {	
-							if(name == "list"){
-								console.log("!");
-								var m = "";
-								var i = 0;
-								Object.keys(res.activities).forEach(function(key){
-									i++;
-									var val = res.activities[key];
-									console.log(val.identifier);
-									m += String(i)+") " + String(val.identifier)+"\n";
+						if(splitMessage.length == 3){
+							var name = splitMessage[2];
+							console.log(name);
+							destiny.Advisors({
+								definitions: true
+							}).then(res => {	
+								if(name == "list"){
+									console.log("!");
+									var m = "";
+									var i = 0;
+									Object.keys(res.activities).forEach(function(key){
+										i++;
+										var val = res.activities[key];
+										console.log(val.identifier);
+										m += String(i)+") " + String(val.identifier)+"\n";
+									});
+									
+									message.channel.sendMessage("Events: \n"+m);
+									return;
+								}
+								var status = res.activities[name].status;
+								var vendorHash = res.activities[name].vendorHash;
+								var act = res.activities[name];
+								var dis = act.display;
+								
+								var tipString = "";
+								for(i = 0; i < dis.tips.length; i++){
+									tipString += String(dis.tips[i]) + "\n";
+								}
+								console.log(dis);
+								var about = dis.about;
+								about = striptags(about);
+								
+								
+								const embed = new Discord.RichEmbed()
+									.setTitle(dis.advisorTypeCategory)
+									.setColor(0x00AE86)
+									.setDescription(about)
+									.setThumbnail("http://bungie.net/"+dis.icon)
+									
+								
+								var activityHash = dis.activityHash;
+								console.log(activityHash);
+								destiny.Manifest({
+									type: 'Activity',
+									hash: activityHash
+								}).then(res => {
+									console.log(res);
+									var name = res.activity.activityName;
+									var about = res.activity.activityDescription;
+									embed.addField("Activity: "+name, about);
+									embed.addField("Tips",tipString);
+									embed.setImage("http://www.bungie.net"+res.activity.pgcrImage);
+									console.log(embed);
+									message.channel.sendEmbed(embed);
 								});
 								
-								message.channel.sendMessage("Events: \n"+m);
-								return;
-							}
-							var status = res.activities[name].status;
-							var vendorHash = res.activities[name].vendorHash;
-							var act = res.activities[name];
-							var dis = act.display;
-							
-							var tipString = "";
-							for(i = 0; i < dis.tips.length; i++){
-								tipString += String(dis.tips[i]) + "\n";
-							}
-							console.log(dis);
-							var about = dis.about;
-							about = striptags(about);
-							
-							
-							const embed = new Discord.RichEmbed()
-								.setTitle(dis.advisorTypeCategory)
-								.setColor(0x00AE86)
-								.setDescription(about)
-								.setThumbnail("http://bungie.net/"+dis.icon)
-								
-							
-							var activityHash = dis.activityHash;
-							console.log(activityHash);
-							destiny.Manifest({
-								type: 'Activity',
-								hash: activityHash
-							}).then(res => {
-								console.log(res);
-								var name = res.activity.activityName;
-								var about = res.activity.activityDescription;
-								embed.addField("Activity: "+name, about);
-								embed.addField("Tips",tipString);
-								embed.setImage("http://www.bungie.net"+res.activity.pgcrImage);
-								console.log(embed);
-								message.channel.sendEmbed(embed);
+								//console.log(act);
 							});
-							
-							//console.log(act);
-						});
+						}
+						else{
+							sendCommandError(message, " it's missing/too many arguments", "!destiny event trials");
+						}
+						
 					}
 					else if(splitMessage[1] === "eventvendor"){
 						var name = splitMessage[2];
+						if(splitMessage.length != 3){
+							sendCommandError(message, " it's missing/too many arguments", "!destiny eventvendor trials");
+							return;
+						}
 						console.log(name);
 						destiny.Advisors({
 							definitions: true
@@ -1891,12 +1909,16 @@ client.on('message', message => {
 								}
 							}
 						}
-						else if(splitMessage.length == 3){
-							
-							
-						}	
+						else{
+							sendCommandError(message, " it's missing/too many arguments", "!destiny elo");
+						}
 					}
 					else if(splitMessage[1] === "elograph"){
+						console.log(splitMessage.length)
+						if(splitMessage.length != 3 && splitMessage.length != 4){
+							sendCommandError(message, " it's missing/too many arguments", "!destiny elograph control");
+							return;
+						}
 								var messageName = String(message.member.user.username);
 								var gameMode = splitMessage[2];
 								var graphType = splitMessage[3];
@@ -2028,6 +2050,10 @@ client.on('message', message => {
 						var messageName = String(message.member.user.username);
 						var limit = splitMessage[2];
 						var character_index = -1;
+						if(splitMessage.length != 3 && splitMessage.length != 4){
+							sendCommandError(message, " it's missing/too many arguments", "!destiny kd 5");
+							return;
+						}
 						if(splitMessage.length == 4){
 							character_index = parseInt(splitMessage[3]);
 						}
@@ -2838,7 +2864,9 @@ function setupLoadout(loadout, char_id, linker){
 		}
 	}
 }
-
+function sendCommandError(message, issue, example){
+	message.channel.sendMessage("I was unable to process the command: ```diff\n"+message.content+"``` Because "+issue+". Here is an example:\n```\n"+example+"\n```");
+}
 function isBotCommander(input){
 	//console.log(input.member.roles);
 	return input.member.roles.exists('name', 'Bot Commander')
@@ -2868,7 +2896,6 @@ function random (low, high) {
 
 function hasModPerms(input) {
 	try{
- 
 		var modPerms = [ "MANAGE_MESSAGES", "MANAGE_ROLES_OR_PERMISSIONS" ];
 		var mod = input.member.permissions.hasPermissions(modPerms, true);
 		return mod;
@@ -2879,3 +2906,44 @@ function hasModPerms(input) {
 	}
 
 } 
+
+String.prototype.setCharAt = function(idx, chr) {
+	if(idx > this.length - 1){
+		return this.toString();
+	} else {
+		return this.substr(0, idx) + chr + this.substr(idx + 1);
+	}
+};
+
+function generateEventCountdown(event, callback){
+	var time = require('time');
+	var startTime = event.startTime;
+	var mer = startTime[startTime.length - 2] + startTime[startTime.length - 1];
+	console.log(mer);
+	var timeZone = event.timeZone;
+	
+	if(timeZone[1] == "S" && timeZone != "DST" && timeZone != "HST"){
+		timeZone = timeZone.setCharAt(1, "D");
+	}
+	console.log(timeZone);
+	var date = event.date;
+	
+	if(mer != "pm" && mer != "am" && mer != "PM" && mer && "AM"){
+		return " A countdown is not avaliable for this group because there was no valid PM/AM";
+	}
+	fs.readFile(__dirname+'/timezones.json', function(err, data){
+		if(err) throw err;
+		var timezones = JSON.parse(data);
+		for(i = 0; i < timezones.length; i++){
+			if(timezones[i]['abbr'] == timeZone){
+				console.log(timezones[i].utc[0]);
+				var city = timezones[i].utc[0];
+				var now = new time.Date(); //right now.
+				now.setTimezone(timezones[i].utc[0]); //set timezone to first city in list this doesn't work, time doesn't change. 
+				console.log(now.toString());
+				callback(timezones[i].value + ", City: "+timezones[i].utc[0] + ", Text: "+timezones[i].text);
+			}
+		}
+	});
+	
+}

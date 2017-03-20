@@ -17,9 +17,6 @@ var Server = function(){
 	EventEmitter.call(this);
 }
 
-
-//util.inherits(Server, EventEmitter);
-
 Server.prototype.__proto__ = EventEmitter.prototype;
 
 Server.prototype.Start = function() {

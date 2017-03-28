@@ -2286,10 +2286,17 @@ client.on('message', message => {
 client.on("guildMemberAdd", (member) => {
 	console.log("New Member Joined!");
 	console.log(member.user);
+	
+	var dm = "Welcome to Seraphim Elite " + member.user + ", make sure you read the rules in #read-me, and please introduce yourself to the rest of the clan in #general! Make sure you put your PSN in your nickname somewhere (if it isn't already) and let us know where you're from or what timezone you're in. When you're ready, you can set Seraphim Elite as your active clan at: https://www.bungie.net/en/Clan/Detail/1866434";
+	
+	var welMsg = "Welcome " +member.user+ "! Tell us about yourself!"; 
+	
+	member.user.sendMessage(dm);
+	
 	for(i = 0; i < client.channels.array().length; ++i){
 		if(client.channels.array()[i].name == "general")
 		{
-			client.channels.array()[i].sendMessage("Welcome to Seraphim Elite "+member.user+", make sure you read the rules in # welcome-read-me, and feel free to introduce yourself to the rest of the clan! If you haven't already, you can set Seraphim Elite as your active clan at: https://www.bungie.net/en/Clan/Detail/1866434");
+			client.channels.array()[i].sendMessage(welMsg);
 			var initRole = client.channels.array()[i].guild.roles.find('name', 'Initiate');
 			member.addRole(initRole.id);
 		}

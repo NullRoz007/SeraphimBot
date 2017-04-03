@@ -79,7 +79,7 @@ app.get('/authenticate', function(req, res){
 		var accessToken = String(json.Response.accessToken.value);
 		console.log(accessToken);
 		var refreshToken = String(json.Response.refreshToken.value);
-		
+		//console.log(refreshToken);
 		//now we need to grab the membershipId associated with the accessToken so we can update the links.json file:
 		request({
 			headers: {
@@ -106,25 +106,26 @@ app.get('/authenticate', function(req, res){
 					console.log(user);
 					var membershipId = user.membershipId;
 					var linked_users = [];
+					var linked_users_new = [];
 					fs.exists("home/links.json", function(exists){
 						if(exists){
-							console.log("1");
 							fs.readFile('home/links.json', (err, data) => {
-								console.log("2")
+								
 								var arrayObject = JSON.parse(data);
 								linked_users = arrayObject;
 								for(i = 0; i < linked_users.length; i++){
 									var linker = linked_users[i];
 									if(linker.destinyId == membershipId){
-										console.log("AYY?");
+										console.log("Found member, updating Access and refreshTokens...");
 										linker.token = accessToken;
 										linker.refreshToken = refreshToken;
+										console.log(linker);
 										linked_users[i] = linker;
 									}
 								}
 								console.log('Updating links JSON');
 								try{
-									console.log("3")
+									
 									var jsonString = JSON.stringify(linked_users);
 									fs.writeFile("home/links.json", jsonString);
 									console.log("Done!");

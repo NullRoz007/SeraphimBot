@@ -33,6 +33,20 @@ var stat_hashes = {
 	"1735777505": "Discipline",
 	"4244567218": "Strength"
 }
+
+var record_book_hashes = [
+	{name: 'Age of Triumph', recordBookHash: '840570351', itemHash: '1469071803'}
+]
+
+var raid_map = [
+	{color: 0x239B56, name: "CrotaHeroic", c_modes: [ {'name':'Ir Yût', 'help': ''}, {'name': 'Crota', 'help': ''}], icon: 'https://www.bungie.net/common/destiny_content/icons/e619a50b6db5110403b9978d98383016.png'},
+	{color: 0x239B56, name: "VaultHeroic", c_modes: [ {'name':'The Templar', 'help': ''}, {'name': 'Atheon', 'help': ''}], icon: ''},
+	{color: 0x239B56, name: "OryxHeroic", c_modes: [ {'name':'The Warpriest', 'help': ''}, {'name': 'Golgoroth', 'help': ''}, {'name': 'Oryx', 'help': ''}], icon: ''},
+	{color: 0x239B56, name: "WrathHeroic", c_modes: [ {'name':'Whatshisname', 'help': ''}, {'name': 'Aksis', 'help': ''}], icon: ''}
+	
+	//Add the others here, once we know their recruitmentIds
+]
+
 //game modes for guardian.gg
 var gg_modes = {
 	"skirmish": "9", 
@@ -63,10 +77,9 @@ var months = {
 	"11": "Nov",
 	"12": "Dec"
 }
-var VERSION = "1.3.8";
+var VERSION = "1.3.10";
 var changelog = VERSION+": \n" +
-				"	 1) Added a Date field to !post. !groups, !group, !mygroups display a date.\n"+
-				"	 2) Added !changetime. Group creators can change the date & time of a group.";
+				"	 1) Updated !groups so that it uses pages instead of displaying all the groups at once."
 
 				
 client.on('ready', () => {
@@ -175,7 +188,7 @@ client.on('message', message => {
 				for(i = 0; i < user_events.length; i++){
 					try{
 						
-						output += "ID: "+user_events[i].id+", "+user_events[i].name+ ", Date: "+events[i].date+ ", Start Time: "+user_events[i].startTime + "-"+user_events[i].timeZone +"\n";
+						output += "ID: "+user_events[i].id+", "+user_events[i].name+ ", Date: "+user_events[i].date+ ", Start Time: "+user_events[i].startTime + "-"+user_events[i].timeZone +"\n";
 					}
 					catch(err){
 						message.channel.sendMessage(err);
@@ -185,28 +198,7 @@ client.on('message', message => {
 				output += "```\nTo get more specific details about a group, type !group <id>.\nYou can also check available groups at: http://seraphimbot.mod.bz/home/groups";
 				message.channel.sendMessage(output);
 		}
-		else if(message.content === "!groups"){
-			if(events.length != 0){
-				console.log("Getting groups...");
-				var output = "```";
-				for(i = 0; i < events.length; i++){
-					try{
-						
-						output += "ID: "+events[i].id+", "+events[i].name+ ", Date: "+events[i].date+ ", Start Time: "+events[i].startTime + "-"+events[i].timeZone +"\n";
-					}
-					catch(err){
-						message.channel.sendMessage(err);
-					}
-					
-				}
-				output += "```\nTo get more specific details about a group, type !group <id>.\nYou can also check available groups at: http://seraphimbot.mod.bz/home/groups";
-				message.channel.sendMessage(output);
-			}
-			else{
-				message.channel.sendMessage("There are no groups, use !post to create one.");
-			}
-			
-		}
+
 		else if(message.content.split(' ').length >= 1){
 			var splitMessage = message.content.split(' ');	
 			if(splitMessage[0] === "!clear"){
@@ -330,14 +322,62 @@ client.on('message', message => {
 				updateGroupsJSON();
 				
 			}
+			else if(splitMessage[0] == "!groups"){
+				if(splitMessage.length == 2){
+					var id = splitMessage[1];
+					var output = "";
+					
+					if(id == "all"){
+						
+						for(i = 0; i < events.length; i++){
+							try{
+								output += "**" + events[i].id + " - " +events[i].name+ "**\n" 
+								+ "    **Joined:** "+ events[i].players.length.toString() + ", **Date:** "+events[i].date+"\n"
+								+ "    **Start Time:** "+events[i].startTime + "-"+events[i].timeZone + "\n"
+								+ "\n";
+							}
+							catch(err){
+								message.channel.sendMessage(err);
+							}	
+						}
+						message.reply("I am sending you a DM now...");
+						message.author.sendMessage(output);
+					} else {
+						
+						intId = parseInt(id);
+						var pagesize = 6;
+						offset = (intId - 1)*pagesize;
+						
+						output = "Now viewing page " + id + " of " + Math.ceil(events.length/pagesize) + "\n\n";
+						
+						for(i = 0; i < pagesize ; i++){
+							var temp = events.length - 1 - i - offset;
+							if(temp  < 0) { break;}
+							try{
+								output += "**" + events[temp].id + " - " +events[temp].name+ "**\n" 
+								+ "    **Joined:** "+ events[temp].players.length.toString() + ", **Date:** "+events[temp].date+"\n"
+								+ "    **Start Time:** "+events[temp].startTime + "-"+events[temp].timeZone + "\n"
+								+ "\n";
+							}
+							catch(err){
+								message.channel.sendMessage(err);
+							}	
+						}
+						message.channel.sendMessage(output);
+					}
+				}
+				else{
+					sendCommandError(message, " it's missing/too many arguments", "!groups 1 or !groups all");
+				}
+			}
 			else if(splitMessage[0] == "!group"){
 				if(splitMessage.length == 2 || splitMessage.length == 3){
 					var id = splitMessage[1];
 					if(id - 1 < events.length && id > 0){
 						var event = events[parseInt(id) - 1];
-						generateEventCountdown(event, (timezone) => {
+						/*generateEventCountdown(event, (timezone) => {
 							message.channel.sendMessage("Using timezone: "+timezone);
-						});
+						});*/
 						
 						const embed = new Discord.RichEmbed()
 							.setTitle(event.name)
@@ -572,7 +612,7 @@ client.on('message', message => {
 		}
 	}
 	
-	if(message.channel.name == "announcements" || message.channel.name == "bot_commands"){
+	if(message.channel.name == "announcements" || message.channel.name == "bot-commands"){
 		messages.push(message);
 		//COMMANDS THAT ONLY WORK IN THE ANNOUNCEMENTS CHANNEL:
 		
@@ -660,7 +700,8 @@ client.on('message', message => {
 						"!destiny event list : list avaliable events.\n"+
 						"!destiny event <eventname> : Get an event, (not working for some events)\n"+
 						"!destiny weeklysummary  :  can only be called from announcements.\n"+
-						"!destiny xur : can only be called from announcements."					
+						"!destiny xur : can only be called from announcements.\n"+
+						"!destiny recordbook : view the age of triumph record book."						
 				
 			message.reply("I'm sending you a DM now...");
 			
@@ -1070,6 +1111,121 @@ client.on('message', message => {
 						}
 						sendNews("destiny", "en", message);
 					}
+					else if(splitMessage[1] === "recordbook"){
+						if(splitMessage.length == 3){
+							if(splitMessage[2] == "list"){
+								var embed = new Discord.RichEmbed()
+									.setTitle("Avaliable Record Books")
+								
+								var names = "";
+								for(i = 0; i < record_book_hashes.length; i++){
+									
+									var name = record_book_hashes[i].name;
+									var hash = record_book_hashes[i].hash;
+									names += (i+1)+"): "+name+" - ID: "+i+"\n"
+									
+								}
+								embed.setDescription(names);
+								message.channel.sendEmbed(embed);
+							}
+						}
+						else{
+							//The AoT book was the only one I could get to work, not sure why. 
+							var id = 0;
+							var bookHash = record_book_hashes[Number(id)].recordBookHash;
+							var itemHash = record_book_hashes[Number(id)].itemHash;
+							console.log("Book Hash: "+bookHash);
+							
+							var linker = getLinker(message.member.user.username);
+							console.log("Using memID: "+linker.destinyId);
+							destiny.Advisors({
+								membershipType: 2,
+								membershipId: linker.destinyId
+							}).then(res => {
+								var i = 0;
+								var comp = 0;
+								var started = 0;
+								var not_started = 0;
+								var adv = res;
+								console.log(res.recordBooks[bookHash]);
+								
+								var daily = res.recordBooks[bookHash].progression.dailyProgress;
+								var weekly = res.recordBooks[bookHash].progression.weeklyProgress;
+								var total = res.recordBooks[bookHash].progression.currentProgress;
+								
+								
+								for(var prop in res.recordBooks[bookHash].records){
+									if(res.recordBooks[bookHash].records.hasOwnProperty(prop)){
+										var record = res.recordBooks[bookHash].records[prop];
+										for(x = 0; x < record.objectives.length; x++){
+											if(record.objectives[0].isComplete){
+												comp++;
+												console.log("Completed.");
+											}
+										
+											if(record.objectives[0].hasProgress && !record.objectives[0].isComplete){
+												started++;
+												console.log("Started.")
+											}
+										
+											if(!record.objectives[0].hasProgress && !record.objectives[0].isComplete){
+												not_started++;
+												console.log("Not Started.")
+											}
+										
+											i++;
+										}
+									}
+								}
+								var percentage_comp = Math.round((comp / i) * 100) + "%"
+								var percentage_started = Math.round((started / i) * 100) + "%"
+								var percentage_not_started = Math.round((not_started / i) * 100) + "%"
+								var level = res.recordBooks[bookHash].progression.level;
+								
+								var nextReward = "";
+								
+								for(i = 0; i < res.recordBooks[bookHash].spotlights.length; i++){
+									if(res.recordBooks[bookHash].spotlights[i].rewardedAtLevel == level + 1){
+										var reward = res.recordBooks[bookHash].spotlights[i];
+										
+										destiny.Manifest({
+											type: 'inventoryItem',
+											hash: reward.rewardItemHash
+										}).then(res => {
+											console.log(res);
+											var nextReward = res.inventoryItem.itemName;
+											var nextRewardType = res.inventoryItem.itemTypeName;
+											var nextRewardDesc = res.inventoryItem.itemDescription;
+											destiny.Manifest({
+												type: 'InventoryItem',
+												hash: itemHash
+											}).then(res => {
+											
+												var icon = res.inventoryItem.icon;
+												var name = res.inventoryItem.itemName;
+												var desc = res.inventoryItem.itemDescription;
+												console.log(icon);
+												var recUrl = "https://www.bungie.net/en/Legend/RecordBook/2/"+linker.destinyId+"?recordBook=840570351";
+												var embed = new Discord.RichEmbed()
+													.setTitle(name)
+													.setThumbnail("http://bungie.net/"+icon)
+													.setDescription("*"+desc+"*")
+													.addField("Records:","Records completed: "+percentage_comp+"\nRecords started: "+percentage_started+"\nRecords not started: "+percentage_not_started)
+													.setURL(recUrl);
+													//.setImage("https://www.bungie.net/img/theme/destiny/bgs/record_books/bg_age_of_triumph_book.jpg");
+									
+												embed.addField("Progression:", "Level: "+level+"\nDaily Progress: "+daily+"\nWeekly Progress: "+weekly+"\nTotal Progress: "+total);
+												embed.addField("Next reward at Level "+String(Number(level + 1))+":", nextReward+" - "+nextRewardType+"\nhttps://www.bungie.net/en/Armory/Detail?item="+res.inventoryItem.itemHash);
+												message.channel.sendEmbed(embed);
+												return;
+									
+											});
+										});
+									}
+								}	
+							});
+						}
+					}
 					else if(splitMessage[1] === "auth"){
 						message.channel.sendMessage("In order to authenticate your Destiny Account you will need to follow this link: https://www.bungie.net/en/Application/Authorize/11575");
 					}
@@ -1150,7 +1306,7 @@ client.on('message', message => {
 										var output = "Player summary for "+messageName+":\nGrimiore Score: "+grScore + " - Characters: " + charCount+"\n";
 										for(x = 0; x < characterSummarys.length; x++){
 											var summary = characterSummarys[x];
-											output += "```Level: "+summary.Level;
+											output += "```Level: "+summary.Level+"```";
 										}
 										
 										console.log(output);
@@ -1239,7 +1395,7 @@ client.on('message', message => {
 						if(splitMessage.length == 3){
 							var name = splitMessage[2];
 							console.log(name);
-							destiny.Advisors({
+							destiny.AdvisorsTwo({
 								definitions: true
 							}).then(res => {	
 								if(name == "list"){
@@ -1308,7 +1464,7 @@ client.on('message', message => {
 							return;
 						}
 						console.log(name);
-						destiny.Advisors({
+						destiny.AdvisorsTwo({
 							definitions: true
 						}).then(res => {	
 							if(name == "list"){
@@ -1392,30 +1548,35 @@ client.on('message', message => {
 						if(message.channel.name != "announcements"){
 							return;
 						}
-						destiny.Advisors({
+						destiny.AdvisorsTwo({
 							definitions: true
 						}).then(adv => {
 							// SET UP
+							
+							console.log("=============================ADV===================================");
+							console.log(adv);
+							console.log("===================================================================");
 							var k;
-							var num = 7;
+							var num = 6;
 							var embedList = [];
-							for(k = 0;k < num; k++){
+							for(k = 0; k < num; k++){
 								embedList[k] = new Discord.RichEmbed();
 							}
 							
 							var promises = [];
-							
+							/*
 							// 0 KINGS FALL
 							var kfHash = adv.activities["kingsfall"].display.activityHash;
-							
+							//console.log(kfHash);
 							promises.push(destiny.Manifest({
 								type: 'Activity',
 								hash: kfHash
 								}).then(res => {
-									//console.log(res.activity);
+									console.log(res.activity);
 									var kfSkulls = res.activity.skulls;
+									console.log("KF: "+kfSkulls);
 									var name = res.activity.activityName;
-
+									
 									var start = new Date("2015-12-8");
 									var today = new Date();
 									var weeks = Math.round((today-start)/ 604800000);
@@ -1424,16 +1585,23 @@ client.on('message', message => {
 									
 									embedList[0]
 										.setTitle("Raid: " + name)
-										.setThumbnail("http://bungie.net/"+kfSkulls[ind].icon)
+										.setThumbnail("http://bungie.net/"+res.activity.icon)
 										.setColor(0x000000);
-												
-									embedList[0].addField(kfSkulls[ind].displayName, kfSkulls[ind].description);
+									if(kfSkulls.length > 0){
+										embedList[0].addField(kfSkulls[ind].displayName, kfSkulls[ind].description);
+									}	
+									else{
+										embedList[0].addField("No skulls avaliable at this time.");
+									}
+									
+									
 									
 									//console.log(embed);
 									//message.channel.sendEmbed(embedList[0]);
 								}));
-							
+							*/
 							// 1 WOTM
+							/*
 							var wmHash = adv.activities["wrathofthemachine"].display.activityHash;
 							
 							promises.push(destiny.Manifest({
@@ -1442,8 +1610,9 @@ client.on('message', message => {
 								}).then(res => {
 									//console.log(res.activity);
 									var wmSkulls = res.activity.skulls;
+									console.log("WM: "+wmSkulls);
 									var name = res.activity.activityName;
-
+									
 									var start = new Date("2016-11-1");
 									var today = new Date();
 									var weeks = Math.round((today-start)/ 604800000);
@@ -1452,37 +1621,85 @@ client.on('message', message => {
 									
 									embedList[1]
 										.setTitle("Raid: " + name)
-										.setThumbnail("http://bungie.net/"+wmSkulls[ind].icon)
+										.setThumbnail("http://bungie.net/"+res.activity.icon)
 										.setColor(0xFF0000);
 												
-									embedList[1].addField(wmSkulls[ind].displayName, wmSkulls[ind].description);
+									if(wmSkulls.length > 0){
+										embedList[1].addField(wmSkulls[ind].displayName, wmSkulls[ind].description);
+									}	
+									else{
+										embedList[1].addField("No skulls avaliable at this time.");
+									}
 									
 									//console.log(embed);
 									//message.channel.sendEmbed(embed);
 								}));
+							
+							
+							*/
+							
+							//1 WEEKLY RAID ---------------------------------------------------------
+							var wrHash = adv.activities.weeklyfeaturedraid.display.activityHash;
+							var wrRecruitmentId = adv.activities.weeklyfeaturedraid.display.recruitmentIds[0];
+							var wrChModes = getChallengeModes(wrRecruitmentId);
+							var wrColor = getRaidColor(wrRecruitmentId);
+							var wrIcon = getRaidIcon(wrRecruitmentId);
+							
+							console.log(wrChModes);
+							console.log(wrColor);
+							//console.log(adv.activities.weeklyfeaturedraid.display);
+							promises.push(destiny.Manifest({
+								type: 'Activity',
+								hash: wrHash
+							}).then(res => {
+								console.log(res);
+								var name = res.activity.activityName;
+								embedList[0]
+										.setTitle("Weekly Featured Raid: " + name + " - Level "+res.activity.activityLevel)
+										.setThumbnail(wrIcon)
+										.setDescription(res.activity.activityDescription)
+										.setColor(wrColor);
+								/*var i;
+								var c_string = "";
+								for(i = 0; i < wrChModes.length; i++){
+									c_string += ""+ wrChModes[i]['name']+"\n";
+								}
 								
+								embedList[0].addField("Challenge Modes: ", c_string);
+								*/
+								
+								for(i = 0; i < res.activity.skulls.length; i++){
+									embedList[0].addField(res.activity.skulls[i].displayName, res.activity.skulls[i].description);
+								}
+								
+							}));
 							// 2 NIGHTFALL -----------------------------------------------------------
 							var nfHash = adv.activities["nightfall"].display.activityHash;
+						
 							var nfSkulls = adv.activities["nightfall"].extended.skullCategories[0].skulls;
 							
 							promises.push(destiny.Manifest({
 								type: 'Activity',
 								hash: nfHash
 								}).then(res => {								
-									var name = res.activity.activityName;								
-									embedList[2]
+									var name = res.activity.activityName;	
+									
+									embedList[1]
 										.setTitle("Nightfall: " + name)
 										.setThumbnail("http://bungie.net/"+res.activity.icon)
+										.setDescription(res.activity.activityDescription)
 										.setColor(0x0000FF);
 										
 									var i;
 									for(i = 0; i < nfSkulls.length; i++){
-										embedList[2].addField(nfSkulls[i].displayName, nfSkulls[i].description);
+										embedList[1].addField(nfSkulls[i].displayName, nfSkulls[i].description);
 									}
 									
 									//console.log(embed);
 									//message.channel.sendEmbed(embed);
 								}));
+							
+							
 							
 							// 3 HEROICS -----------------------------------------------------------
 							var hsHash = adv.activities["heroicstrike"].display.activityHash;
@@ -1494,14 +1711,16 @@ client.on('message', message => {
 								}).then(res => {
 									//console.log(res.activity);								
 									var name = res.activity.activityName;								
-									embedList[3]
+									embedList[2]
 										.setTitle("Heroic Playlist: " + name)
 										.setThumbnail("http://bungie.net/"+res.activity.icon)
+										.setDescription(res.activity.activityDescription)
+										//.setImage("http://bungie.net/"+res.activity.pgcrImage)
 										.setColor(0x00AE76);
 										
 									var i;
 									for(i = 0; i < hsSkulls.length; i++){
-										embedList[3].addField(hsSkulls[i].displayName, hsSkulls[i].description);
+										embedList[2].addField(hsSkulls[i].displayName, hsSkulls[i].description);
 									}
 									
 									//console.log(embed);
@@ -1517,46 +1736,49 @@ client.on('message', message => {
 								type: 'Activity',
 								hash: wcHash
 								}).then(res => {
-									console.log(res.activity);
+								//	console.log(res.activity);
 									
 									var name = res.activity.activityName;
 									
-									embedList[4]
+									embedList[3]
 										.setTitle("Weekly Crucible: ")
 										.setThumbnail("http://bungie.net/"+res.activity.icon)
+										.setDescription(res.activity.activityDescription)
+										//.setImage("http://bungie.net/"+res.activity.pgcrImage)
 										.setColor(0xFF9900);
 												
-									embedList[4].addField(name, res.activity.activityDescription);
+									embedList[3].addField(name, res.activity.activityDescription);
 									
 									//console.log(embed);
 									//message.channel.sendEmbed(embed);
 								}));
 							
 							// 5 ELDERS CHALLENGE
-							promises.push(destiny.Advisors({
+							promises.push(destiny.AdvisorsTwo({
 								definitions: true
 							}).then(adv => {
-								var display = adv.activities.elderchallenge.display
-								//console.log(display);
+								var display = adv.activities.elderchallenge.display;
+							
 								//console.log("--------------------------------------");
-								console.log(adv.activities.elderchallenge.extended.skullCategories[0].skulls);
-								console.log(adv.activities.elderchallenge.extended.skullCategories[1]);
+								//console.log(adv.activities.elderchallenge.extended.skullCategories[0].skulls);
+								//console.log(adv.activities.elderchallenge.extended.skullCategories[1]);
 								
 								var modifiers = adv.activities.elderchallenge.extended.skullCategories[0].skulls;
 								var bonuses = adv.activities.elderchallenge.extended.skullCategories[1].skulls
 								
-								embedList[5]
+								embedList[4]
 									.setTitle(display.advisorTypeCategory)
 									.setColor(0x00AE86)
 									.setThumbnail("http://bungie.net/"+display.icon)
 								
 								// Add modifiers and bonuses
+					
 								var i;
 								for(i = 0; i < modifiers.length; i++){
-									embedList[5].addField(modifiers[i].displayName, modifiers[i].description);
+									embedList[4].addField(modifiers[i].displayName, modifiers[i].description);
 								}
 								for(i = 0; i < bonuses.length; i++){
-									embedList[5].addField(bonuses[i].displayName, bonuses[i].description);
+									embedList[4].addField(bonuses[i].displayName, bonuses[i].description);
 								}
 							}));
 							
@@ -1646,7 +1868,7 @@ client.on('message', message => {
 								// Print results when they all resolve
 								Promise.all(promises1)
 									.then(ans => {
-										embedList[6]
+										embedList[5]
 											.setTitle("Tyra Karn: Iron Lord Artifacts")
 											.setThumbnail("https://www.bungie.net/common/destiny_content/icons/c93bfa7d9753fdf552b223f0c69df006.png")
 											.setColor(0x9900FF);
@@ -1655,7 +1877,7 @@ client.on('message', message => {
 											var temp = artifacts[i]['stat1'][0] + ": " + artifacts[i]['stat1'][2] + "%\n" +
 											   artifacts[i]['stat2'][0] + ": " + artifacts[i]['stat2'][2] + "%\n" +
 											   "Overall: " + artifacts[i]['ave'] + "%"
-											embedList[6].addField(artifacts[i]['name'], temp);
+											embedList[5].addField(artifacts[i]['name'], temp);
 										}
 										//message.channel.sendEmbed(embed);
 									});
@@ -1677,7 +1899,7 @@ client.on('message', message => {
 							return;
 						}
 						
-						destiny.Advisors({
+						destiny.AdvisorsTwo({
 							definitions: true
 						}).then(adv => {
 							
@@ -2308,6 +2530,9 @@ module.exports = {
 	Start: function(botname){
 			fs.readFile('config.json', function(err, data){
 				var config = JSON.parse(data);
+				
+				
+				
 				client.login(config[botname+'BotToken']); //BenBot
 				destiny = Destiny(config['destinyApiToken']);
 				APIKEY = config['destinyApiToken'];
@@ -2771,7 +2996,63 @@ function getGroups(username){
 	}
 	return return_events;
 }
-function refreshAccessToken(membershipId, refreshT){
+
+function getLinker(discordName){
+	for(i = 0; i < linked_users.length; i++){
+		
+		if(linked_users[i].discordName == discordName) return linked_users[i];
+	}
+	return "FAIL";
+}
+
+function countMembers(object){
+	var i = 0;
+	for(prop in object){
+		if(object.hasOwnProperty(prop)){
+			i++;
+		}
+	}
+	return i;
+}
+
+function getRecordBook(linker, recordBookId, callback){
+	var membershipId = linker.destinyId;
+	var refreshToken = linker.refreshToken;
+	if(!linker.refreshToken){
+		callback("no_token");
+	}
+	refreshAccessToken(membershipId, refreshToken, (result, token) => {
+		var accessToken = "";
+		if(result == "tokenokay"){
+			accessToken = linker.token;
+		}
+		else if(result == "tokenupdated"){
+			accessToken = token;
+		}
+		else{
+			console.log("Invalid result from token refresh.")
+			return;
+		}
+		console.log("Using Access Token: "+accessToken);
+		console.log("Getting book: "+recordBookId);
+		var options = {
+			headers: {
+				'X-API-KEY': APIKEY,
+				'Authorization': 'Bearer '+accessToken
+			},
+			url: 'https://www.bungie.net/Platform/Destiny/2/MyAccount/RecordBooks/'+recordBookId+'/Completion/'
+		}
+		request(options, function (error, response, body){
+			var jObj = JSON.parse(body);
+			console.log(jObj);
+			callback(jObj.Response.data.isComplete);
+		});
+	});
+	//var accessToken = (refChecker == -1) ? linker.token : refChecker;
+	
+}
+
+function refreshAccessToken(membershipId, refreshT, callback){
 	console.log("Refreshing with: "+refreshT);
 	var options = {
 		headers: {
@@ -2787,7 +3068,7 @@ function refreshAccessToken(membershipId, refreshT){
 		if(errorCode == '2110'){
 			//refresh token is not valid yet:
 			console.log("Access code does not need to be updated yet.")
-			return;
+			callback("tokenokay", "");
 		}
 		else if(errorCode == '1'){
 			//success:
@@ -2803,6 +3084,7 @@ function refreshAccessToken(membershipId, refreshT){
 					new_linker.refreshToken = newRefreshToken;
 					linked_users[i] = new_linker;
 					updateLinksJSON();
+					callback("tokenupdated", newAccessToken);
 				}
 			}
 		}
@@ -2901,6 +3183,7 @@ function random (low, high) {
     return Math.random() * (high - low) + low;
 }
 
+
 function hasModPerms(input) {
 	try{
 		var modPerms = [ "MANAGE_MESSAGES", "MANAGE_ROLES_OR_PERMISSIONS" ];
@@ -2914,6 +3197,33 @@ function hasModPerms(input) {
 
 } 
 
+function getChallengeModes(recruitmentId){
+	var i = 0;
+	for(i = 0; i < raid_map.length; i++){
+		if(raid_map[i].name == recruitmentId){
+			return raid_map[i].c_modes;
+		}
+	}
+}
+
+function getRaidColor(recruitmentId){
+	var i = 0;
+	for(i = 0; i < raid_map.length; i++){
+		if(raid_map[i].name == recruitmentId){
+			return raid_map[i].color;
+		}
+	}
+}
+
+function getRaidIcon(recruitmentId){
+	var i = 0;
+	for(i = 0; i < raid_map.length; i++){
+		if(raid_map[i].name == recruitmentId){
+			return raid_map[i].icon;
+		}
+	}
+}
+
 String.prototype.setCharAt = function(idx, chr) {
 	if(idx > this.length - 1){
 		return this.toString();
@@ -2922,7 +3232,7 @@ String.prototype.setCharAt = function(idx, chr) {
 	}
 };
 
-function generateEventCountdown(event, callback){
+/*function generateEventCountdown(event, callback){
 	var time = require('time');
 	var startTime = event.startTime;
 	var mer = startTime[startTime.length - 2] + startTime[startTime.length - 1];
@@ -2953,4 +3263,4 @@ function generateEventCountdown(event, callback){
 		}
 	});
 	
-}
+}*/

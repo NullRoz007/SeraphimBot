@@ -10,7 +10,8 @@ var _utils = require('./utils');
  */
 var GET = [
         { name: 'Search', url: 'SearchDestinyPlayer/${ membershipType }/${ name }/', required: ['membershipType', 'name'] },
-		{ name: 'Advisors', url: '/Advisors/V2', required: []}, 
+		{ name: 'AdvisorsTwo', url: '/Advisors/V2', required: []}, 
+		{ name: 'Advisors', url: '${ membershipType }/Account/${ membershipId }/Advisors/', required: []},
 		{ name: 'Xur', url: '/Advisors/Xur/', required: []},
 		{ name: 'Vendors' , url: 'Vendors/${vendorId}/', required: ['vendorId']},
 		{ name: 'Manifest', url: 'Manifest/${ type }/${ hash }/', required: ['type','hash'] },

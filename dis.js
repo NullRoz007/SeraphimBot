@@ -39,10 +39,10 @@ var record_book_hashes = [
 ]
 
 var raid_map = [
-	{color: 0x239B56, name: "CrotaHeroic", c_modes: [ {'name':'Ir Yût', 'help': ''}, {'name': 'Crota', 'help': ''}], icon: 'https://www.bungie.net/common/destiny_content/icons/e619a50b6db5110403b9978d98383016.png'},
-	{color: 0x239B56, name: "VaultHeroic", c_modes: [ {'name':'The Templar', 'help': ''}, {'name': 'Atheon', 'help': ''}], icon: ''},
-	{color: 0x239B56, name: "OryxHeroic", c_modes: [ {'name':'The Warpriest', 'help': ''}, {'name': 'Golgoroth', 'help': ''}, {'name': 'Oryx', 'help': ''}], icon: ''},
-	{color: 0x239B56, name: "WrathHeroic", c_modes: [ {'name':'Whatshisname', 'help': ''}, {'name': 'Aksis', 'help': ''}], icon: ''}
+	{color: 0x239B56, name: "CrotaHeroic", c_modes: [], icon: 'https://www.bungie.net/common/destiny_content/icons/e619a50b6db5110403b9978d98383016.png'},
+	{color: 0x0000FF, name: "VaultOfGlassHeroic", c_modes: [], icon: 'https://www.bungie.net/common/destiny_content/icons/b20cd4ced07bfaa541cb1f54816aec95.png'},
+	{color: 0x239B56, name: "KingsFallHeroic", c_modes: [], icon: '/common/destiny_content/icons/b20cd4ced07bfaa541cb1f54816aec95.png'},
+	{color: 0x239B56, name: "WrathOfTheMachineHeroic", c_modes: [], icon: '/common/destiny_content/icons/b20cd4ced07bfaa541cb1f54816aec95.png'}
 	
 	//Add the others here, once we know their recruitmentIds
 ]
@@ -1196,6 +1196,7 @@ client.on('message', message => {
 											var nextReward = res.inventoryItem.itemName;
 											var nextRewardType = res.inventoryItem.itemTypeName;
 											var nextRewardDesc = res.inventoryItem.itemDescription;
+											var nextRewardHash = res.inventoryItem.itemHash;
 											destiny.Manifest({
 												type: 'InventoryItem',
 												hash: itemHash
@@ -1215,7 +1216,7 @@ client.on('message', message => {
 													//.setImage("https://www.bungie.net/img/theme/destiny/bgs/record_books/bg_age_of_triumph_book.jpg");
 									
 												embed.addField("Progression:", "Level: "+level+"\nDaily Progress: "+daily+"\nWeekly Progress: "+weekly+"\nTotal Progress: "+total);
-												embed.addField("Next reward at Level "+String(Number(level + 1))+":", nextReward+" - "+nextRewardType+"\nhttps://www.bungie.net/en/Armory/Detail?item="+res.inventoryItem.itemHash);
+												embed.addField("Next reward at Level "+String(Number(level + 1))+":", nextReward+" - "+nextRewardType+"\nhttps://www.bungie.net/en/Armory/Detail?item="+nextRewardHash);
 												message.channel.sendEmbed(embed);
 												return;
 									
@@ -1641,6 +1642,7 @@ client.on('message', message => {
 							//1 WEEKLY RAID ---------------------------------------------------------
 							var wrHash = adv.activities.weeklyfeaturedraid.display.activityHash;
 							var wrRecruitmentId = adv.activities.weeklyfeaturedraid.display.recruitmentIds[0];
+							console.log(wrRecruitmentId);
 							var wrChModes = getChallengeModes(wrRecruitmentId);
 							var wrColor = getRaidColor(wrRecruitmentId);
 							var wrIcon = getRaidIcon(wrRecruitmentId);

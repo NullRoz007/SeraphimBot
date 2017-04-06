@@ -28,6 +28,12 @@ module.exports = {
 		event.date = date;
 		event.startTime = time;
 		event.timeZone = timezone;
+	},
+	out: function(event){
+		return "**" + event.id + " - " +event.name+ "**\n" 
+				+ "    Joined:** "+ event.players.length.toString() + "**, Date:** "+event.date+"**\n"
+				+ "    Start Time:** "+event.startTime + "-"+event.timeZone + "**\n"
+				+ "\n";
 	}
 }
 

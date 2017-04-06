@@ -77,9 +77,13 @@ var months = {
 	"11": "Nov",
 	"12": "Dec"
 }
-var VERSION = "1.3.10";
+var VERSION = "1.3.11";
 var changelog = VERSION+": \n" +
-				"	 1) Updated !groups so that it uses pages instead of displaying all the groups at once."
+				"	 1) Changed the output format for !groups\n" +
+				"    2) !mygroups output now matches !groups\n" +
+				"    3) !groups all is the default now\n" +
+				"    4) cleaned up and fixed !addtogroup and !removefromgroup, made mod only\n" +
+				"    5) !post restricted to mods and Seraphs. People without clan tags can still join groups\n";
 
 				
 client.on('ready', () => {
@@ -184,18 +188,15 @@ client.on('message', message => {
 		else if(message.content === "!mygroups"){
 			var username = message.member.user.username;
 			var user_events = getGroups(username);
-			var output = "```";
+			var output = "";
 				for(i = 0; i < user_events.length; i++){
-					try{
-						
-						output += "ID: "+user_events[i].id+", "+user_events[i].name+ ", Date: "+user_events[i].date+ ", Start Time: "+user_events[i].startTime + "-"+user_events[i].timeZone +"\n";
-					}
-					catch(err){
+					try{			
+						output += Events.out(user_events[i]);					
+					} catch(err){
 						message.channel.sendMessage(err);
 					}
 					
 				}
-				output += "```\nTo get more specific details about a group, type !group <id>.\nYou can also check available groups at: http://seraphimbot.mod.bz/home/groups";
 				message.channel.sendMessage(output);
 		}
 
@@ -234,6 +235,11 @@ client.on('message', message => {
 			}
 			else if(splitMessage[0] === "!post")
 			{	
+				if(!hasModPerms(message) && !hasRole(message, "Seraph")){
+					message.reply("You need to get a clan tag before you can post your own groups, feel free to ask a mod or join someone else's group.")
+					return;
+				}
+				
 				console.log("Creating new event...");	
 				try
 				{
@@ -323,18 +329,29 @@ client.on('message', message => {
 				
 			}
 			else if(splitMessage[0] == "!groups"){
-				if(splitMessage.length == 2){
+				
+				var output = "";
+				if(splitMessage.length == 1){
+					for(i = 0; i < events.length; i++){
+							try{
+								output += Events.out(events[i]);
+							}
+							catch(err){
+								message.channel.sendMessage(err);
+							}	
+						}
+						message.reply("I am sending you a DM now...");
+						message.author.sendMessage(output);
+						
+				} else if(splitMessage.length == 2){
 					var id = splitMessage[1];
-					var output = "";
 					
+		
 					if(id == "all"){
 						
 						for(i = 0; i < events.length; i++){
 							try{
-								output += "**" + events[i].id + " - " +events[i].name+ "**\n" 
-								+ "    **Joined:** "+ events[i].players.length.toString() + ", **Date:** "+events[i].date+"\n"
-								+ "    **Start Time:** "+events[i].startTime + "-"+events[i].timeZone + "\n"
-								+ "\n";
+								output += Events.out(events[i]);
 							}
 							catch(err){
 								message.channel.sendMessage(err);
@@ -354,10 +371,7 @@ client.on('message', message => {
 							var temp = events.length - 1 - i - offset;
 							if(temp  < 0) { break;}
 							try{
-								output += "**" + events[temp].id + " - " +events[temp].name+ "**\n" 
-								+ "    **Joined:** "+ events[temp].players.length.toString() + ", **Date:** "+events[temp].date+"\n"
-								+ "    **Start Time:** "+events[temp].startTime + "-"+events[temp].timeZone + "\n"
-								+ "\n";
+								output += Events.out(events[temp]);
 							}
 							catch(err){
 								message.channel.sendMessage(err);
@@ -538,31 +552,26 @@ client.on('message', message => {
 			}
 			
 			else if (splitMessage[0] === "!addtogroup"){
-				if (splitMessage.length >= 3){
+				if(!hasModPerms(message)){
+					return;
+				}
+				
+				if (splitMessage.length == 3){
 					
 					var id = splitMessage[1];
+					var userID = message.mentions.users.array()[0];
+					
+					console.log(userID.username);
 					
 					if (id - 1 < events.length && id > 0){
 						
 						var event = events.find(x => x.id == id);
-						var userToFind = splitMessage[2];
-							
-						// Build the user name, for when there are spaces in the name
-						for (var i = 3; i < splitMessage.length; i++){
-							userToFind = userToFind + " " + splitMessage[i];
-						}
-						var foundUser = findUser(message, userToFind);
+
+						Events.addPlayer(event, userID.username);
+						message.channel.sendMessage("Added " + userID.username + " to group " + id);
+						updateGroupsJSON();
 					
-						if (foundUser != null) {
-							// All is good, add user to group
-							Events.addPlayer(event, foundUser);
-							message.channel.sendMessage("Added " + foundUser.user.username + " to group " + id);
-							updateGroupsJSON();
-						
-						} else {
-							// Could not find user
-							message.channel.sendMessage("I could not find that user");
-						}
+					
 					} else {
 						// Could not find event
 						message.channel.sendMessage("I could not find that event");
@@ -574,32 +583,26 @@ client.on('message', message => {
 			}
 			
 			else if (splitMessage[0] === "!removefromgroup"){
-				if (splitMessage.length >= 3){
+				if(!hasModPerms(message)){
+					return;
+				}
+				
+				if (splitMessage.length == 3){
 					
 					var id = splitMessage[1];
+					var userID = message.mentions.users.array()[0];
+					
+					console.log(userID.username);
 					
 					if (id - 1 < events.length && id > 0){
 						
 						var event = events.find(x => x.id == id);
-						var userToFind = splitMessage[2];
-							
-						// Build the user name, for when there are spaces in the name
-						for (var i = 3; i < splitMessage.length; i++){
-							userToFind = userToFind + " " + splitMessage[i];
-						}
-						var foundUser = findUser(message, userToFind);
-					
-						if (foundUser != null) {
-							// All is good, remove user from group
-							Events.removePlayer(event, foundUser.user.username);
-							
-							message.channel.sendMessage("Removed " + foundUser.user.username + " from group " + id);
-							updateGroupsJSON();
+		
+						Events.removePlayer(event, userID.username);	
+						message.channel.sendMessage("Removed " + userID.username + " from group " + id);
+						updateGroupsJSON();
 						
-						} else {
-							// Could not find user
-							message.channel.sendMessage("I could not find that user");
-						}
+						 
 					} else {
 						// Could not find event
 						message.channel.sendMessage("I could not find that group");
@@ -668,7 +671,9 @@ client.on('message', message => {
 						 "!clear  :  Clears recent messages in the channel\n" +
 						 "!clearuser <amount> <username>  :  searches through <amount> message and deletes any authored by <username>\n" +
 						 "!addrole <role> <username>  : adds the role to user, if both exist\n" +
-						 "!removerole <role> <username>  : removes the role from the user, if both exist\n\n";
+						 "!removerole <role> <username>  : removes the role from the user, if both exist\n" +
+						 "!addtogroup <groupID> <User mention>  :  You need use the @user mention for this\n" + 
+						 "removefromgroup <groupID> <User mention>  :  You need use the @user mention for this\n\n";
 
 			var h_gen = "**General Commands**\n" +
 						"!ping  :  A tiny bit about the bot\n" +
@@ -3163,6 +3168,11 @@ function isBotCommander(input){
 	return input.member.roles.exists('name', 'Bot Commander')
 			
 }
+
+function hasRole(message, roleName){
+	return message.member.roles.exists('name', roleName)
+}
+
 function allAre(value, list){
 	for(i = 0; i < list.length; i++){
 		if(list[i] != value){

@@ -83,7 +83,8 @@ var changelog = VERSION+": \n" +
 				"    2) !mygroups output now matches !groups\n" +
 				"    3) !groups all is the default now\n" +
 				"    4) cleaned up and fixed !addtogroup and !removefromgroup, made mod only\n" +
-				"    5) !post restricted to mods and Seraphs. People without clan tags can still join groups\n";
+				"    5) !post restricted to mods and Seraphs. People without clan tags can still join groups\n" +
+				"	 6) Fixed the DM issue with !groups and !groups all\n";
 
 				
 client.on('ready', () => {
@@ -330,35 +331,73 @@ client.on('message', message => {
 			}
 			else if(splitMessage[0] == "!groups"){
 				
-				var output = "";
 				if(splitMessage.length == 1){
-					for(i = 0; i < events.length; i++){
+					
+					message.reply("I am sending you a DM now...");
+					var dmSize = 10;
+					var numberOfDMs = Math.ceil(events.length/dmSize);
+					
+					for(i = 0; i < numberOfDMs; i++){
+						
+						var output = "";
+						
+						for(j = 0; j < dmSize; j++){
+							var index = (i*dmSize)-1 + j;
+							if(index >= events.length){
+								break;
+							}
 							try{
-								output += Events.out(events[i]);
+								output += Events.out(events[index]);
 							}
 							catch(err){
 								message.channel.sendMessage(err);
 							}	
-						}
-						message.reply("I am sending you a DM now...");
-						message.author.sendMessage(output);
+						}	
+						message.author.sendMessage(output)
+							.then(res => {
+								console.log((i+1)+" sent successfully");
+							}).catch(err => {
+								console.log("Error sending " + (i+1));
+								//console.log(err);
+							});	
+					}
+						
+						
 						
 				} else if(splitMessage.length == 2){
 					var id = splitMessage[1];
 					
-		
+					// We don't really need the 'all' argument, leaving it just in case some people are used to it
 					if(id == "all"){
 						
-						for(i = 0; i < events.length; i++){
-							try{
-								output += Events.out(events[i]);
-							}
-							catch(err){
-								message.channel.sendMessage(err);
-							}	
-						}
 						message.reply("I am sending you a DM now...");
-						message.author.sendMessage(output);
+						var dmSize = 10;
+						var numberOfDMs = Math.ceil(events.length/dmSize);
+						
+						for(i = 0; i < numberOfDMs; i++){
+							
+							var output = "";
+							
+							for(j = 0; j < dmSize; j++){
+								var index = (i*dmSize)-1 + j;
+								if(index >= events.length){
+									break;
+								}
+								try{
+									output += Events.out(events[index]);
+								}
+								catch(err){
+									message.channel.sendMessage(err);
+								}	
+							}	
+							message.author.sendMessage(output)
+								.then(res => {
+									console.log((i+1)+" sent successfully");
+								}).catch(err => {
+									console.log("Error sending " + (i+1));
+									//console.log(err);
+								});	
+						}
 					} else {
 						
 						intId = parseInt(id);

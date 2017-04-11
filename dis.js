@@ -21,10 +21,14 @@ var event_offset = 0;
 var linked_users = [];
 var user_modes = [];
 var loadouts = [];
+var recirds = [];
 var APIKEY = null;
 var destiny = null;
 var request = require('request');
 var config = null;
+var sys = require('sys')
+var exec = require('child_process').exec;
+var last_manifest_version = null;
 
 var stat_hashes = {
 	"Light": "3897883278",
@@ -41,8 +45,8 @@ var record_book_hashes = [
 var raid_map = [
 	{color: 0x239B56, name: "CrotaHeroic", c_modes: [], icon: 'https://www.bungie.net/common/destiny_content/icons/e619a50b6db5110403b9978d98383016.png'},
 	{color: 0x0000FF, name: "VaultOfGlassHeroic", c_modes: [], icon: 'https://www.bungie.net/common/destiny_content/icons/b20cd4ced07bfaa541cb1f54816aec95.png'},
-	{color: 0x239B56, name: "KingsFallHeroic", c_modes: [], icon: '/common/destiny_content/icons/b20cd4ced07bfaa541cb1f54816aec95.png'},
-	{color: 0x239B56, name: "WrathOfTheMachineHeroic", c_modes: [], icon: '/common/destiny_content/icons/b20cd4ced07bfaa541cb1f54816aec95.png'}
+	{color: 0x239B56, name: "KingsFallHeroic", c_modes: [], icon: 'https://www.bungie.net/common/destiny_content/icons/b20cd4ced07bfaa541cb1f54816aec95.png'},
+	{color: 0x239B56, name: "WrathOfTheMachineHeroic", c_modes: [], icon: 'https:/www.bungie.net/common/destiny_content/icons/b20cd4ced07bfaa541cb1f54816aec95.png'}
 	
 	//Add the others here, once we know their recruitmentIds
 ]
@@ -1156,120 +1160,217 @@ client.on('message', message => {
 						sendNews("destiny", "en", message);
 					}
 					else if(splitMessage[1] === "recordbook"){
-						if(splitMessage.length == 3){
-							if(splitMessage[2] == "list"){
-								var embed = new Discord.RichEmbed()
-									.setTitle("Avaliable Record Books")
-								
-								var names = "";
-								for(i = 0; i < record_book_hashes.length; i++){
-									
-									var name = record_book_hashes[i].name;
-									var hash = record_book_hashes[i].hash;
-									names += (i+1)+"): "+name+" - ID: "+i+"\n"
-									
-								}
-								embed.setDescription(names);
-								message.channel.sendEmbed(embed);
-							}
-						}
-						else{
-							//The AoT book was the only one I could get to work, not sure why. 
-							var id = 0;
-							var bookHash = record_book_hashes[Number(id)].recordBookHash;
-							var itemHash = record_book_hashes[Number(id)].itemHash;
-							console.log("Book Hash: "+bookHash);
-							
-							var linker = getLinker(message.member.user.username);
-							console.log("Using memID: "+linker.destinyId);
-							destiny.Advisors({
-								membershipType: 2,
-								membershipId: linker.destinyId
-							}).then(res => {
-								var i = 0;
-								var comp = 0;
-								var started = 0;
-								var not_started = 0;
-								var adv = res;
-								console.log(res.recordBooks[bookHash]);
-								
-								var daily = res.recordBooks[bookHash].progression.dailyProgress;
-								var weekly = res.recordBooks[bookHash].progression.weeklyProgress;
-								var total = res.recordBooks[bookHash].progression.currentProgress;
-								
-								
-								for(var prop in res.recordBooks[bookHash].records){
-									if(res.recordBooks[bookHash].records.hasOwnProperty(prop)){
-										var record = res.recordBooks[bookHash].records[prop];
-										for(x = 0; x < record.objectives.length; x++){
-											if(record.objectives[0].isComplete){
-												comp++;
-												console.log("Completed.");
-											}
+						setupManifest(message, (result) => {
+							if(result.done){
+								if(splitMessage.length == 3){
+									if(splitMessage[2] == "list"){
 										
-											if(record.objectives[0].hasProgress && !record.objectives[0].isComplete){
-												started++;
-												console.log("Started.")
-											}
-										
-											if(!record.objectives[0].hasProgress && !record.objectives[0].isComplete){
-												not_started++;
-												console.log("Not Started.")
-											}
-										
-											i++;
-										}
-									}
-								}
-								var percentage_comp = Math.round((comp / i) * 100) + "%"
-								var percentage_started = Math.round((started / i) * 100) + "%"
-								var percentage_not_started = Math.round((not_started / i) * 100) + "%"
-								var level = res.recordBooks[bookHash].progression.level;
-								
-								var nextReward = "";
-								
-								for(i = 0; i < res.recordBooks[bookHash].spotlights.length; i++){
-									if(res.recordBooks[bookHash].spotlights[i].rewardedAtLevel == level + 1){
-										var reward = res.recordBooks[bookHash].spotlights[i];
-										
-										destiny.Manifest({
-											type: 'inventoryItem',
-											hash: reward.rewardItemHash
-										}).then(res => {
-											console.log(res);
-											var nextReward = res.inventoryItem.itemName;
-											var nextRewardType = res.inventoryItem.itemTypeName;
-											var nextRewardDesc = res.inventoryItem.itemDescription;
-											var nextRewardHash = res.inventoryItem.itemHash;
-											destiny.Manifest({
-												type: 'InventoryItem',
-												hash: itemHash
-											}).then(res => {
+										fs.readFile("aot.json", (err, data) => {
+											var aot = JSON.parse(data);
+											var embed = new Discord.RichEmbed()
+												.setTitle("Avaliable Pages");
+											var i = 0;
+											var desc = "";
+											aot.pages.forEach((page) => {
+												console.log(page);
+												desc += i+") "+page.displayName+"\n";
+												i++;
+											});
+											embed.setDescription(desc);
+											embed.setThumbnail("https://www.bungie.net/common/destiny_content/icons/dff552e423015c3c755cd3bf374bf93e.png");
 											
-												var icon = res.inventoryItem.icon;
-												var name = res.inventoryItem.itemName;
-												var desc = res.inventoryItem.itemDescription;
-												console.log(icon);
-												var recUrl = "https://www.bungie.net/en/Legend/RecordBook/2/"+linker.destinyId+"?recordBook=840570351";
-												var embed = new Discord.RichEmbed()
-													.setTitle(name)
-													.setThumbnail("http://bungie.net/"+icon)
-													.setDescription("*"+desc+"*")
-													.addField("Records:","Records completed: "+percentage_comp+"\nRecords started: "+percentage_started+"\nRecords not started: "+percentage_not_started)
-													.setURL(recUrl);
-													//.setImage("https://www.bungie.net/img/theme/destiny/bgs/record_books/bg_age_of_triumph_book.jpg");
-									
-												embed.addField("Progression:", "Level: "+level+"\nDaily Progress: "+daily+"\nWeekly Progress: "+weekly+"\nTotal Progress: "+total);
-												embed.addField("Next reward at Level "+String(Number(level + 1))+":", nextReward+" - "+nextRewardType+"\nhttps://www.bungie.net/en/Armory/Detail?item="+nextRewardHash);
+											message.channel.sendEmbed(embed);
+											
+										
+										});
+										
+										var names = "";
+										for(i = 0; i < record_book_hashes.length; i++){
+											
+											var name = record_book_hashes[i].name;
+											var hash = record_book_hashes[i].hash;
+											names += (i+1)+"): "+name+" - ID: "+i+"\n"
+											
+										}
+										embed.setDescription(names);
+										
+										message.channel.sendEmbed(embed);
+									}
+									else if(isNumber(splitMessage[2])){
+										fs.readFile("aot.json", (err, data) => {
+											var aot = JSON.parse(data);
+											var page = aot.pages[Number(splitMessage[2])];
+											if(page.displayStyle != 0) {message.channel.sendMessage("I can't display that page because it does not use the correct display style. "); return; }
+											//console.log(page);
+											
+											var bookHash = record_book_hashes[0].recordBookHash;
+											var title = page.displayName;
+											var description = page.displayDescription;
+											var hashes = [];
+											
+											page.records.forEach((record) => {
+												hashes.push(record.recordHash);
+											});
+											var linker = getLinker(message.member.user.username);
+											console.log("Using memID: "+linker.destinyId);
+											
+											var embed = new Discord.RichEmbed()
+												.setTitle("Page: *"+title+"*")
+												.setDescription("*"+description+"*\n");
+												
+											destiny.Advisors({
+												membershipType: 2,
+												membershipId: linker.destinyId
+											}).then(res => {
+												var cor_records = [];
+												for(var prop in res.recordBooks[bookHash].records){
+													if(res.recordBooks[bookHash].records.hasOwnProperty(prop)){
+														var record = res.recordBooks[bookHash].records[prop];
+														if(hashes.contains(record.recordHash)){
+															cor_records.push(record);
+														}
+													}
+												}
+												var pl_records = [];
+												
+												cor_records.forEach((record) => {
+													records.forEach((rec) => {
+														
+														var rec_obj = JSON.parse(rec.json);
+														if(rec_obj.hash == record.recordHash){
+															console.log(rec_obj);
+															var completed = record.objectives[0].isComplete ? "Completed" : "Not Completed";
+															var obj = {
+																obj: rec_obj,
+																rec: record,
+																comp: completed
+															};
+															pl_records.push(obj);
+															
+														}
+													});	
+												});
+												
+												pl_records.sort(function(a, b){
+													return a.obj.index - b.obj.index;
+												});
+												
+												
+												var finished_rec = pl_records[pl_records.length - 1];
+												console.log(finished_rec);
+												var icon = finished_rec.obj.index != 79 ? finished_rec.obj.icon : pl_records[0].obj.icon;
+												embed.setThumbnail("http://www.bungie.net/"+icon);
+												embed.setImage("https://www.bungie.net/img/theme/destiny/bgs/record_books/bg_age_of_triumph_book.jpg");
+												pl_records.forEach((object) => {
+													embed.addField(object.obj.displayName + " - "+object.comp, object.obj.description+"\n\nValue: "+object.rec.objectives[0].displayValue);
+												});
+												
 												message.channel.sendEmbed(embed);
-												return;
-									
 											});
 										});
-									}
-								}	
-							});
-						}
+									}	
+								}
+								else{
+									//The AoT book was the only one I could get to work, not sure why. 
+			
+									var bookHash = record_book_hashes[0].recordBookHash;
+									var itemHash = record_book_hashes[0].itemHash;
+									console.log("Book Hash: "+bookHash);
+									
+									var linker = getLinker(message.member.user.username);
+									console.log("Using memID: "+linker.destinyId);
+									destiny.Advisors({
+										membershipType: 2,
+										membershipId: linker.destinyId
+									}).then(res => {
+										var i = 0;
+										var comp = 0;
+										var started = 0;
+										var not_started = 0;
+										var adv = res;
+										//console.log("BOOK: "+JSON.stringify(res.recordBooks[bookHash]));
+										
+										var daily = res.recordBooks[bookHash].progression.dailyProgress;
+										var weekly = res.recordBooks[bookHash].progression.weeklyProgress;
+										var total = res.recordBooks[bookHash].progression.currentProgress;
+										
+										
+										for(var prop in res.recordBooks[bookHash].records){
+											if(res.recordBooks[bookHash].records.hasOwnProperty(prop)){
+												var record = res.recordBooks[bookHash].records[prop];
+												for(x = 0; x < record.objectives.length; x++){
+													console.log(record);
+													if(record.objectives[0].isComplete){
+														comp++;
+														console.log("Completed.");
+													}
+												
+													if(record.objectives[0].hasProgress && !record.objectives[0].isComplete){
+														started++;
+														console.log("Started.")
+													}
+												
+													if(!record.objectives[0].hasProgress && !record.objectives[0].isComplete){
+														not_started++;
+														console.log("Not Started.")
+													}
+												
+													i++;
+												}
+											}
+										}
+										var percentage_comp = Math.round((comp / i) * 100) + "%"
+										var percentage_started = Math.round((started / i) * 100) + "%"
+										var percentage_not_started = Math.round((not_started / i) * 100) + "%"
+										var level = res.recordBooks[bookHash].progression.level;
+										
+										var nextReward = "";
+										
+										for(i = 0; i < res.recordBooks[bookHash].spotlights.length; i++){
+											if(res.recordBooks[bookHash].spotlights[i].rewardedAtLevel == level + 1){
+												var reward = res.recordBooks[bookHash].spotlights[i];
+												
+												destiny.Manifest({
+													type: 'inventoryItem',
+													hash: reward.rewardItemHash
+												}).then(res => {
+													console.log(res);
+													var nextReward = res.inventoryItem.itemName;
+													var nextRewardType = res.inventoryItem.itemTypeName;
+													var nextRewardDesc = res.inventoryItem.itemDescription;
+													var nextRewardHash = res.inventoryItem.itemHash;
+													destiny.Manifest({
+														type: 'InventoryItem',
+														hash: itemHash
+													}).then(res => {
+													
+														var icon = res.inventoryItem.icon;
+														var name = res.inventoryItem.itemName;
+														var desc = res.inventoryItem.itemDescription;
+														console.log(icon);
+														var recUrl = "https://www.bungie.net/en/Legend/RecordBook/2/"+linker.destinyId+"?recordBook=840570351";
+														var embed = new Discord.RichEmbed()
+															.setTitle(name)
+															.setThumbnail("http://bungie.net/"+icon)
+															.setDescription("*"+desc+"*")
+															.addField("Records:","Records completed: "+percentage_comp+"\nRecords started: "+percentage_started+"\nRecords not started: "+percentage_not_started)
+															.setURL(recUrl);
+															//.setImage("https://www.bungie.net/img/theme/destiny/bgs/record_books/bg_age_of_triumph_book.jpg");
+											
+														embed.addField("Progression:", "Level: "+level+"\nDaily Progress: "+daily+"\nWeekly Progress: "+weekly+"\nTotal Progress: "+total);
+														embed.addField("Next reward at Level "+String(Number(level + 1))+":", nextReward+" - "+nextRewardType+"\nhttps://www.bungie.net/en/Armory/Detail?item="+nextRewardHash);
+														message.channel.sendEmbed(embed);
+														return;
+											
+													});
+												});
+											}
+										}	
+									});
+								}
+							}
+						});
+						
 					}
 					else if(splitMessage[1] === "auth"){
 						message.channel.sendMessage("In order to authenticate your Destiny Account you will need to follow this link: https://www.bungie.net/en/Application/Authorize/11575");
@@ -1687,12 +1788,8 @@ client.on('message', message => {
 							var wrHash = adv.activities.weeklyfeaturedraid.display.activityHash;
 							var wrRecruitmentId = adv.activities.weeklyfeaturedraid.display.recruitmentIds[0];
 							console.log(wrRecruitmentId);
-							var wrChModes = getChallengeModes(wrRecruitmentId);
-							var wrColor = getRaidColor(wrRecruitmentId);
 							var wrIcon = getRaidIcon(wrRecruitmentId);
-							
-							console.log(wrChModes);
-							console.log(wrColor);
+							console.log(wrIcon);
 							//console.log(adv.activities.weeklyfeaturedraid.display);
 							promises.push(destiny.Manifest({
 								type: 'Activity',
@@ -1704,7 +1801,7 @@ client.on('message', message => {
 										.setTitle("Weekly Featured Raid: " + name + " - Level "+res.activity.activityLevel)
 										.setThumbnail(wrIcon)
 										.setDescription(res.activity.activityDescription)
-										.setColor(wrColor);
+										
 								/*var i;
 								var c_string = "";
 								for(i = 0; i < wrChModes.length; i++){
@@ -2576,13 +2673,11 @@ module.exports = {
 	Start: function(botname){
 			fs.readFile('config.json', function(err, data){
 				var config = JSON.parse(data);
-				
-				
-				
 				client.login(config[botname+'BotToken']); //BenBot
 				destiny = Destiny(config['destinyApiToken']);
 				APIKEY = config['destinyApiToken'];
 				fs.unlink('config.json');
+				updateRecordsList();
 				//client.login(config['secondaryBotToken']); //BenBot
 			});
 			
@@ -2776,6 +2871,19 @@ function updateLinksList(){
 	});
 }
  
+function updateRecordsList(){
+	fs.exists("records.json", function(exists){
+		if(exists){
+			fs.readFile('records.json', (err, data) => {
+				var arrayObject = JSON.parse(data);
+				records = arrayObject;
+			});
+		}
+		else{
+			console.log("Records file does not exist.");
+		}
+	});
+}
 function updateUserModesList(){
 	fs.exists("home/usermodes.json", function(exists){
 		if(exists){
@@ -2902,6 +3010,9 @@ Array.prototype.contains = function(obj) {
     return false;
 }
 
+function isNumber(n){
+	return !isNaN(parseFloat(n)) && isFinite(n);
+}
 //type is from https://www.bungie.net/Platform/Content/GetContentType/News/, 
 //couldn't be bothered figuring out how to extend the Destiny-Client library to accept 
 //the Content platform and the Destiny platform, so I'm just going to implement it here. 
@@ -3059,6 +3170,46 @@ function countMembers(object){
 		}
 	}
 	return i;
+}
+
+function setupManifest(message, callback){
+	var unzip = require('unzip');
+	var req_url = "https://www.bungie.net/platform/destiny/manifest/";
+	var options = {
+		headers: {
+			'X-API-KEY': APIKEY
+		},
+		url: req_url
+	};	
+	
+	request(options, function(error, response, body){
+		var Manifest = JSON.parse(body);
+		var Ver = Manifest.Response.version;
+		console.log(Manifest);
+
+		if(Ver != last_manifest_version){
+			console.log("Version mismatch, updating...");
+			message.channel.sendMessage("Updating Manifest...");
+			var manifest_url = "http://www.bungie.net/"+Manifest.Response.mobileWorldContentPaths.en;
+			exec('wget '+manifest_url, function (error, stdout, stderr) {
+				last_manifest_version = Ver;
+				var stream = fs.createReadStream(path.basename(manifest_url));
+				message.channel.sendMessage("Extracting Manifest...");
+				stream.pipe(unzip.Extract({ path: 'manifest' }));
+				stream.on('close', () => {
+					message.channel.sendMessage("Extracting Records table from database...");
+					fs.unlink("./records.json");
+					exec('sqlite-json manifest/'+path.basename(manifest_url)+' --table DestinyRecordDefinition -o records.json', function (error, stdout, stderr){
+						updateRecordsList();
+						callback({done: true});
+					});
+				});
+			});
+		}
+		else{
+			callback({done: true});
+		}
+	});
 }
 
 function getRecordBook(linker, recordBookId, callback){

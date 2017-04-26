@@ -1,6 +1,8 @@
 const Discord = require('discord.js');
+const music = require('./music.js');
 const fs = require('fs');
 const client = new Discord.Client();
+
 const Events = require('./events/event');
 var colors = require('colors');
 var express = require('express');
@@ -37,6 +39,12 @@ var stat_hashes = {
 	"1735777505": "Discipline",
 	"4244567218": "Strength"
 }
+
+class_hashes = {
+	671679327 : "hunter", 
+	2271682572 : "trash",
+	3655393761 : "titan"
+};
 
 var record_book_hashes = [
 	{name: 'Age of Triumph', recordBookHash: '840570351', itemHash: '1469071803'}
@@ -81,25 +89,32 @@ var months = {
 	"11": "Nov",
 	"12": "Dec"
 }
-var VERSION = "1.3.11";
-var changelog = VERSION+": \n" +
-				"	 1) Changed the output format for !groups\n" +
-				"    2) !mygroups output now matches !groups\n" +
-				"    3) !groups all is the default now\n" +
-				"    4) cleaned up and fixed !addtogroup and !removefromgroup, made mod only\n" +
-				"    5) !post restricted to mods and Seraphs. People without clan tags can still join groups\n" +
-				"	 6) Fixed the DM issue with !groups and !groups all\n";
 
-				
+var VERSION = "1.3.2";
+var changelog = VERSION+": \n" +
+				"	 1) Added !destiny recordbook list and !destiny recordbook <pagenumber>\n" +
+				"    2) Added music commands"
+
+
+			
 client.on('ready', () => {
 	console.log('Client Connected!');	
 	updateGroupsList();
 	updateLinksList();
 	updateLoadoutsList();
 	updateUserModesList();
+	
+	var logging_channel = getChannel("bot-output");
+	
+	
+	/*console.log = function(message){
+		logging_channel.sendMessage("**File**: "+String(path.basename(_getCallerFile()))+"Time: "+String(Date.now())+": ```"+message+"```");
+	};*/
+	
 	client.user.setGame("Ver: " + VERSION)
 		.then(console.log("Set the game status"))
 		.catch(err => console.log(err));
+	music(client, "Music", {channel: 'bot-commands'});
 		
 });
 
@@ -118,7 +133,6 @@ client.on('message', message => {
 		else if(message.content ==="!changelog"){
 			message.channel.sendMessage("Current Version: "+VERSION+"\n"+"Change Log: \n"+changelog);
 		}
-		
 		//clear messages from channel
 		else if(message.content === "!clear"){	
 			if (hasModPerms(message)){
@@ -432,9 +446,6 @@ client.on('message', message => {
 					var id = splitMessage[1];
 					if(id - 1 < events.length && id > 0){
 						var event = events[parseInt(id) - 1];
-						/*generateEventCountdown(event, (timezone) => {
-							message.channel.sendMessage("Using timezone: "+timezone);
-						});*/
 						
 						const embed = new Discord.RichEmbed()
 							.setTitle(event.name)
@@ -443,7 +454,7 @@ client.on('message', message => {
 							.addField("Start Time", event.startTime + "-" + event.timeZone)
 								
 							
-								
+								 
 						output = "```\n================================\n"+event.name+"\n================================\nDate: "+event.date+"\nStart Time: "+event.startTime + "-"+event.timeZone+"\n================================\nGroup ID: "+event.id+"\n================================"+"\nRoster:\n";
 						var playerIndex = 1;
 						var players = "";
@@ -749,8 +760,15 @@ client.on('message', message => {
 						"!destiny event <eventname> : Get an event, (not working for some events)\n"+
 						"!destiny weeklysummary  :  can only be called from announcements.\n"+
 						"!destiny xur : can only be called from announcements.\n"+
-						"!destiny recordbook : view the age of triumph record book."						
-				
+						"!destiny recordbook : view the Age of Triumph record book.\n"+
+						"!destiny recordbook list : view avaliable pages in the Age of Triumph record book.\n"+
+						"!destiny recordbook <page_number> : view a specific page from the Age of Triumph record book."						
+			
+			var m_des = "**Music Commands**\n"+
+						"!play <name> : Queue up a song from youtube, (this will get the top video in the list of results).\n"+
+						"!pause : pause the currently playing song.\n"+
+						"!resume : resume the currently playing song.\n"+
+						"!"
 			message.reply("I'm sending you a DM now...");
 			
 			
@@ -1152,6 +1170,7 @@ client.on('message', message => {
 						updateUserModesJSON();
 					}
 				}
+
 				else if(splitMessage[0] === "!destiny"){
 					if(splitMessage[1] === "twab"){
 						if(message.channel.name != "announcements"){
@@ -1211,6 +1230,7 @@ client.on('message', message => {
 											page.records.forEach((record) => {
 												hashes.push(record.recordHash);
 											});
+											
 											var linker = getLinker(message.member.user.username);
 											console.log("Using memID: "+linker.destinyId);
 											
@@ -1245,8 +1265,7 @@ client.on('message', message => {
 																rec: record,
 																comp: completed
 															};
-															pl_records.push(obj);
-															
+															pl_records.push(obj);				
 														}
 													});	
 												});
@@ -1262,7 +1281,7 @@ client.on('message', message => {
 												embed.setThumbnail("http://www.bungie.net/"+icon);
 												embed.setImage("https://www.bungie.net/img/theme/destiny/bgs/record_books/bg_age_of_triumph_book.jpg");
 												pl_records.forEach((object) => {
-													embed.addField(object.obj.displayName + " - "+object.comp, object.obj.description+"\n\nValue: "+object.rec.objectives[0].displayValue);
+													embed.addField(object.obj.displayName,"*"+object.rec.objectives[0].description+"*\n"+object.comp+"\nValue: "+object.rec.objectives[0].displayValue, true);
 												});
 												
 												message.channel.sendEmbed(embed);
@@ -1339,6 +1358,7 @@ client.on('message', message => {
 													var nextRewardType = res.inventoryItem.itemTypeName;
 													var nextRewardDesc = res.inventoryItem.itemDescription;
 													var nextRewardHash = res.inventoryItem.itemHash;
+													var nextRewardIcon = res.inventoryItem.icon;
 													destiny.Manifest({
 														type: 'InventoryItem',
 														hash: itemHash
@@ -1353,12 +1373,13 @@ client.on('message', message => {
 															.setTitle(name)
 															.setThumbnail("http://bungie.net/"+icon)
 															.setDescription("*"+desc+"*")
-															.addField("Records:","Records completed: "+percentage_comp+"\nRecords started: "+percentage_started+"\nRecords not started: "+percentage_not_started)
+															.addField("Records:","Records completed: "+percentage_comp+"\nRecords started: "+percentage_started+"\nRecords not started: "+percentage_not_started, true)
 															.setURL(recUrl);
 															//.setImage("https://www.bungie.net/img/theme/destiny/bgs/record_books/bg_age_of_triumph_book.jpg");
 											
-														embed.addField("Progression:", "Level: "+level+"\nDaily Progress: "+daily+"\nWeekly Progress: "+weekly+"\nTotal Progress: "+total);
-														embed.addField("Next reward at Level "+String(Number(level + 1))+":", nextReward+" - "+nextRewardType+"\nhttps://www.bungie.net/en/Armory/Detail?item="+nextRewardHash);
+														embed.addField("Progression:", "Level: "+level+"\nDaily Progress: "+daily+"\nWeekly Progress: "+weekly+"\nTotal Progress: "+total, true);
+														embed.setFooter("Next reward at Level "+String(Number(level + 1))+": "+nextReward + " - "+nextRewardType, "http://www.bungie.net/"+nextRewardIcon);
+														console.log(embed);
 														message.channel.sendEmbed(embed);
 														return;
 											
@@ -1690,6 +1711,92 @@ client.on('message', message => {
 							
 						});
 					}
+					else if(splitMessage[1] === "ironbanner"){
+						destiny.AdvisorsTwo({
+							definitions: true
+						}).then(adv => {
+							// SET UP
+							
+							console.log("=============================ADV===================================");
+							console.log(adv);
+							console.log("===================================================================");
+							var ibHash = adv.activities.ironbanner.display.activityHash;
+							
+							destiny.Manifest({
+								type: 'Activity',
+								hash: ibHash
+							}).then(res => {
+								console.log(res.activity.rewards[0].rewardItems);
+								
+							});
+						});
+					}
+					else if(splitMessage[1] === "pve"){
+						var linker = getLinker(message.member.user.username);
+						if(!linker) {return;}
+						
+						var id = 0;
+						if(isNumber(splitMessage[2])){
+							id = Number(splitMessage[2]);
+						}
+						
+						destiny.Account({
+							membershipType: 2,
+							membershipId: linker.destinyId
+						}).then(res => {
+							var characterId = res.characters[id].characterBase.characterId;
+							var statsurl = "https://www.bungie.net/Platform/Destiny/Stats/2/"+linker.destinyId+"/"+characterId+"/?groups=1&modes=7&periodType=3"
+							var options = {
+								headers: {
+									'X-API-KEY': APIKEY
+								},
+								url: statsurl
+							};
+							
+							request(options, (error, response, body) => {
+								if(error) {console.log(error); return}
+								stats_object = JSON.parse(body).Response.allPvE.allTime;
+								console.log(stats_object);
+								var activitiesCleared = stats_object.activitiesCleared.basic.displayValue;
+								var weaponKillsSuper = stats_object.weaponKillsSuper.basic.displayValue;
+								var weaponKillsMelee = stats_object.weaponKillsMelee.basic.displayValue;
+								var weaponKillsGrenade = stats_object.weaponKillsGrenade.basic.displayValue;
+								var kills = stats_object.kills.basic.displayValue;
+								var deaths = stats_object.deaths.basic.displayValue;
+								var killsDeathsRatio = stats_object.killsDeathsRatio.basic.displayValue;
+								var weaponBestType = stats_object.weaponBestType.basic.displayValue;
+								var suicides = stats_object.suicides.basic.displayValue;
+								var assists = stats_object.assists.basic.displayValue;
+								var timeplayed = stats_object.secondsPlayed.basic.displayValue;
+
+								var class_emoji = ":"+class_hashes[res.characters[id].characterBase.classHash]+":";
+								console.log(res.characters[id]);
+								var embed = new Discord.RichEmbed()
+									.setAuthor("PvE Stats for "+message.member.user.username + " "+class_emoji, "http://bungie.net/"+res.characters[id].emblemPath)
+									.addField("Activities Cleared:", activitiesCleared, true)
+									.addField("Super Kills:", weaponKillsSuper, true)
+									.addField("Melee Kills:", weaponKillsMelee, true)
+									.addField("Total PvE Kills:", kills, true)
+									.addField("Total PvE Deaths:", deaths, true)
+									.addField("Best Weapon Type:", weaponBestType, true)
+									.addField("Total Suicides:", suicides, true)
+									.addField("Total Assists:", assists, true)
+									.addField("Time Played:", timeplayed, true);
+								if(id == 0){
+									embed.setFooter("Stats are taken from the last played character.");
+								}
+								else{
+									embed.setFooter("Stats are taken from character "+String(id + 1)+"");
+								}
+									
+								message.channel.sendEmbed(embed);
+								
+							});
+						});
+					}
+					else if(splitMessage[1] === "pvp"){
+						
+					}
 					else if(splitMessage[1] === "weeklysummary"){
 						if(message.channel.name != "announcements"){
 							return;
@@ -1709,80 +1816,9 @@ client.on('message', message => {
 								embedList[k] = new Discord.RichEmbed();
 							}
 							
+						
+							
 							var promises = [];
-							/*
-							// 0 KINGS FALL
-							var kfHash = adv.activities["kingsfall"].display.activityHash;
-							//console.log(kfHash);
-							promises.push(destiny.Manifest({
-								type: 'Activity',
-								hash: kfHash
-								}).then(res => {
-									console.log(res.activity);
-									var kfSkulls = res.activity.skulls;
-									console.log("KF: "+kfSkulls);
-									var name = res.activity.activityName;
-									
-									var start = new Date("2015-12-8");
-									var today = new Date();
-									var weeks = Math.round((today-start)/ 604800000);
-									var offset = 1;
-									var ind = ((weeks % 3) + offset) % 3; 
-									
-									embedList[0]
-										.setTitle("Raid: " + name)
-										.setThumbnail("http://bungie.net/"+res.activity.icon)
-										.setColor(0x000000);
-									if(kfSkulls.length > 0){
-										embedList[0].addField(kfSkulls[ind].displayName, kfSkulls[ind].description);
-									}	
-									else{
-										embedList[0].addField("No skulls avaliable at this time.");
-									}
-									
-									
-									
-									//console.log(embed);
-									//message.channel.sendEmbed(embedList[0]);
-								}));
-							*/
-							// 1 WOTM
-							/*
-							var wmHash = adv.activities["wrathofthemachine"].display.activityHash;
-							
-							promises.push(destiny.Manifest({
-								type: 'Activity',
-								hash: wmHash
-								}).then(res => {
-									//console.log(res.activity);
-									var wmSkulls = res.activity.skulls;
-									console.log("WM: "+wmSkulls);
-									var name = res.activity.activityName;
-									
-									var start = new Date("2016-11-1");
-									var today = new Date();
-									var weeks = Math.round((today-start)/ 604800000);
-									var offset = 0;
-									var ind = ((weeks % 2) + offset) % 3;
-									
-									embedList[1]
-										.setTitle("Raid: " + name)
-										.setThumbnail("http://bungie.net/"+res.activity.icon)
-										.setColor(0xFF0000);
-												
-									if(wmSkulls.length > 0){
-										embedList[1].addField(wmSkulls[ind].displayName, wmSkulls[ind].description);
-									}	
-									else{
-										embedList[1].addField("No skulls avaliable at this time.");
-									}
-									
-									//console.log(embed);
-									//message.channel.sendEmbed(embed);
-								}));
-							
-							
-							*/
 							
 							//1 WEEKLY RAID ---------------------------------------------------------
 							var wrHash = adv.activities.weeklyfeaturedraid.display.activityHash;
@@ -2652,7 +2688,7 @@ client.on("guildMemberAdd", (member) => {
 	console.log("New Member Joined!");
 	console.log(member.user);
 	
-	var dm = "Welcome to Seraphim Elite " + member.user + ", make sure you read the rules in #read-me, and please introduce yourself to the rest of the clan in #general! Make sure you put your PSN in your nickname somewhere (if it isn't already) and let us know where you're from or what timezone you're in. When you're ready, you can set Seraphim Elite as your active clan at: https://www.bungie.net/en/Clan/Detail/1866434";
+	var dm = "Welcome to Seraphim Elite " + member.user + ", make sure you read the rules in #read-me, and please introduce yourself to the rest of the clan in #general! Make sure you put your PSN in your nickname somewhere (if it isn't already) and let us know where you're from or what timezone you're in. When you're ready, you can set Seraphim Elite as your active clan at: https://www.bungie.net/en/Clan/Detail/1905682";
 	
 	var welMsg = "Welcome " +member.user+ "! Tell us about yourself!"; 
 	
@@ -3359,8 +3395,16 @@ function isBotCommander(input){
 			
 }
 
+function getId(input){
+	return input.id;
+}
+
 function hasRole(message, roleName){
 	return message.member.roles.exists('name', roleName)
+}
+
+function getRoleById(id){
+	
 }
 
 function allAre(value, list){
@@ -3385,7 +3429,29 @@ function random (low, high) {
     return Math.random() * (high - low) + low;
 }
 
-
+function groupHasSherpas(group){
+	var sherpaRole;
+	client.channels.array().forEach((channel) => {
+		if(channel.name == "general"){
+			sherpaRole = channel.guild.roles.find('name', 'Sherpa');
+		}
+		
+	});
+	console.log(sherpaRole);
+	
+	group.players.forEach((player) => {
+		var user = findUserNoMsg(player);
+		if(user){
+			user._roles.forEach((role) => {
+				console.log(role + " : "+sherpaRole.id);
+				if(role == sherpaRole.id){
+					console.log("Found Sherpa.");
+					return true;
+				}
+			});
+		}
+	});
+}
 function hasModPerms(input) {
 	try{
 		var modPerms = [ "MANAGE_MESSAGES", "MANAGE_ROLES_OR_PERMISSIONS" ];
@@ -3426,13 +3492,28 @@ function getRaidIcon(recruitmentId){
 	}
 }
 
-String.prototype.setCharAt = function(idx, chr) {
-	if(idx > this.length - 1){
-		return this.toString();
-	} else {
-		return this.substr(0, idx) + chr + this.substr(idx + 1);
-	}
-};
+function getChannel(name){
+	return client.channels.find(cha => cha.name === name);
+}
+
+function _getCallerFile() {
+    try {
+        var err = new Error();
+        var callerfile;
+        var currentfile;
+
+        Error.prepareStackTrace = function (err, stack) { return stack; };
+
+        currentfile = err.stack.shift().getFileName();
+
+        while (err.stack.length) {
+            callerfile = err.stack.shift().getFileName();
+
+            if(currentfile !== callerfile) return callerfile;
+        }
+    } catch (err) {}
+    return undefined;
+}
 
 /*function generateEventCountdown(event, callback){
 	var time = require('time');
